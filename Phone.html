@@ -1,0 +1,2369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phone Repair System</title>
+  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Poppins', sans-serif;
+      margin: 0; padding: 0;
+      display: flex; background: #f4f6f8;
+      height: 100vh; overflow: hidden;
+    }
+
+    /* Toast / Bottom Notification Banner Styling */
+    .toast-container {
+      position: fixed;
+      bottom: 25px;
+      right: 25px;
+      z-index: 999999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 360px;
+      width: calc(100% - 50px);
+      pointer-events: none;
+    }
+    .toast-message {
+      pointer-events: auto;
+      background: #1e293b;
+      color: #ffffff;
+      padding: 12px 18px;
+      border-radius: 8px;
+      font-size: 13.5px;
+      font-weight: 500;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      opacity: 0;
+      transform: translateY(20px) scale(0.95);
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      border-left: 5px solid #3b82f6;
+    }
+    .toast-message.toast-visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    .toast-message.toast-success { border-left-color: #10b981; }
+    .toast-message.toast-error { border-left-color: #ef4444; }
+    .toast-message.toast-warning { border-left-color: #f59e0b; }
+    .toast-message.toast-info { border-left-color: #3b82f6; }
+    .toast-message i { font-size: 18px; }
+
+    /* Button Spinner Layout */
+    .btn-spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.4);
+      border-radius: 50%;
+      border-top-color: #ffffff;
+      animation: spin-btn 0.6s linear infinite;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+    @keyframes spin-btn {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Side Structural Navigation Components */
+    .sidebar {
+      width: 70px; background: #4a148c; height: 100%;
+      display: flex; flex-direction: column; align-items: center;
+      padding-top: 20px; gap: 15px; box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+      z-index: 100; transition: width 0.2s ease; flex-shrink: 0;
+    }
+    .sidebar:hover { width: 180px; }
+    .sidebar-btn {
+      width: 100%; background: transparent; border: none;
+      color: rgba(255, 255, 255, 0.7); padding: 15px 0; cursor: pointer;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 5px; font-size: 11px;
+      font-family: 'Poppins', sans-serif; transition: all 0.3s;
+      overflow: hidden; white-space: nowrap;
+    }
+    .sidebar:hover .sidebar-btn {
+      flex-direction: row; justify-content: flex-start;
+      padding-left: 25px; gap: 15px; font-size: 14px;
+    }
+    .sidebar-btn i { font-size: 20px; min-width: 30px; text-align: center; }
+    .sidebar-btn span { display: none; }
+    .sidebar:hover .sidebar-btn span { display: inline; }
+    .sidebar-btn:hover, .sidebar-btn.active {
+      color: #fff; background: rgba(255, 255, 255, 0.15);
+    }
+
+    /* Core Content Containers Panels Switching */
+    .workspace-view {
+      width: 35%; background: #fff; height: 100%;
+      box-shadow: 2px 0 5px rgba(0,0,0,0.05); position: relative;
+      display: none; flex-shrink: 0;
+    }
+    .workspace-view.active { display: block; }
+    .view-scroll-content { padding: 20px; height: 100%; overflow-y: auto; }
+
+    .workspace-view h2, .workspace-view h3 { color: #4a148c; margin-top: 0; margin-bottom: 20px; }
+    .workspace-view input, .workspace-view select {
+      padding: 12px; margin: 8px 0; width: 100%;
+      border: 1px solid #ccc; border-radius: 5px; font-size: 14px;
+      transition: border-color 0.3s;
+    }
+    .workspace-view input:focus, .workspace-view select:focus { border-color: #4a148c; outline: none; }
+
+    /* More Section Toggle Button & Hidden Panel Style Classes */
+    .btn-more-toggle {
+      background: #faf5ff; border: 1px dashed #4a148c; color: #4a148c;
+      padding: 10px; width: 100%; border-radius: 5px; cursor: pointer;
+      font-weight: 600; font-size: 13px; text-align: center; margin: 5px 0 10px 0;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: all 0.2s ease-in-out;
+    }
+    .btn-more-toggle:hover { background: #f3e8ff; }
+    
+    .more-hidden-container {
+      max-height: 0; overflow: hidden; opacity: 0;
+      transition: max-height 0.4s cubic-bezier(0, 1, 0, 1), opacity 0.3s ease;
+      background: #fafafa; border-radius: 6px; padding: 0 10px; margin-bottom: 10px;
+    }
+    .more-hidden-container.expanded {
+      max-height: 2000px; opacity: 1; padding: 12px 10px;
+      border: 1px solid #e2e8f0; transition: max-height 0.4s ease-in-out, opacity 0.3s ease;
+    }
+
+    .compliance-upload-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 5px 0; }
+    .compliance-upload-row label { font-size: 11px; font-weight: 500; color: #4b5563; }
+    .compliance-upload-row input[type="file"] { padding: 6px; font-size: 12px; background: #fff; }
+
+    .declaration-box {
+      background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 4px;
+      padding: 10px; font-size: 11px; color: #334155; max-height: 90px;
+      overflow-y: auto; text-align: justify; margin-top: 8px; user-select: none;
+    }
+    
+    .signature-pad-wrapper {
+      background: #fff; border: 1px dashed #cbd5e1; border-radius: 4px;
+      margin-top: 8px; padding: 8px; text-align: center;
+    }
+    .signature-canvas {
+      border: 1px solid #e2e8f0; background: #fdfdfd; 
+      border-radius: 4px; cursor: crosshair; touch-action: none; width: 100%; height: 120px;
+    }
+    .signature-actions { display: flex; justify-content: space-between; margin-top: 4px; }
+    .btn-sig-clear { background: #6b7280; color: #fff; font-size: 11px; border: none; padding: 4px 10px; border-radius: 3px; cursor: pointer; }
+
+    /* Store View Functional Layout Architecture Layout rules */
+    .store-filters-container {
+      background: #f8f9fa; padding: 12px; border-radius: 6px;
+      margin-bottom: 15px; display: flex; flex-direction: column; gap: 8px;
+    }
+    .store-filters-container div { display: flex; gap: 8px; }
+    .store-filters-container select { margin: 0; padding: 8px; font-size: 13px; }
+
+    .store-summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+    .stat-card {
+      background: #f8f9fa; border-left: 4px solid #4a148c; padding: 12px;
+      border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .stat-card.uncompleted { border-left-color: #ef4444; }
+    .stat-card.completed { border-left-color: #10b981; }
+    .stat-card .card-label { font-size: 11px; text-transform: uppercase; color: #666; font-weight: 600; }
+    .stat-card .card-value { font-size: 16px; font-weight: 600; color: #111; margin-top: 4px; line-height: 1.4; }
+    .stat-card .card-subvalue { font-size: 13px; color: #444; margin-top: 2px; }
+
+    /* Dynamic Data Tables Render Components Layout */
+    .data-table-container { overflow-x: auto; margin-top: 10px; border: 1px solid #eee; border-radius: 6px; }
+    .custom-data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .custom-data-table th, .custom-data-table td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+    .custom-data-table th { background: #4a148c; color: white; position: sticky; top: 0; font-weight: 500; }
+    .custom-data-table tr:nth-child(even) { background: #f9f9f9; }
+    .custom-data-table tr:hover { background: #f1f3f4; }
+    
+    .row-action-links { display: flex; gap: 4px; }
+    .row-action-links button {
+      border: none; padding: 6px 8px; border-radius: 4px;
+      cursor: pointer; color: white; font-size: 12px; transition: opacity 0.2s;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .row-action-links button:hover { opacity: 0.85; }
+    .btn-eye-row { background-color: #6b7280; }
+    .btn-edit-row { background-color: #3b82f6; }
+    .btn-del-row { background-color: #ef4444; }
+    .btn-pay-row { background-color: #10b981; }
+
+    /* Modals Configuration Blocks overlay */
+    .settings-modal, .history-modal {
+      display: none; position: fixed; top: 0; left: 0;
+      width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;
+    }
+    .settings-content, .history-content {
+      background: white; margin: 4% auto; padding: 25px;
+      width: 95%; max-width: 1100px; border-radius: 8px;
+      max-height: 85vh; overflow-y: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+
+    /* Right Display Workspace Sheet Rendering Box Canvas Components */
+    .invoice-container { width: 65%; flex-grow: 1; padding: 20px; overflow-y: auto; }
+    .invoice-box { background: #fff; padding: 30px; border: 1px solid #eee; box-shadow: 0 0 10px rgba(0,0,0,.08); min-height: 100%; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    h1.company-name { font-family: 'Great Vibes', cursive; font-size: 40px; text-align: center; margin: 0 0 15px 0; color: #4a148c; }
+    .print-btn { padding: 15px 20px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; width: 100%; margin-top: 15px; display: inline-flex; align-items: center; justify-content: center; font-weight: 500; font-family: 'Poppins', sans-serif; }
+
+    /* Responsive Presentation Fluid View Device Layout Layer Adaptations */
+    @media screen and (max-width: 1024px) {
+      .workspace-view { width: 45%; }
+      .invoice-container { width: 55%; }
+    }
+    @media screen and (max-width: 768px) {
+      body { flex-direction: column; overflow-y: auto; height: auto; }
+      .sidebar { width: 100%; height: 60px; flex-direction: row; justify-content: space-around; padding-top: 0; position: sticky; top: 0; gap: 0; }
+      .sidebar:hover { width: 100%; }
+      .sidebar-btn { padding: 0; height: 100%; font-size: 10px; }
+      .sidebar:hover .sidebar-btn { flex-direction: column; justify-content: center; padding-left: 0; gap: 2px; font-size: 10px; }
+      .sidebar-btn i { font-size: 18px; }
+      .sidebar-btn span { display: inline !important; }
+      .workspace-view { width: 100%; height: auto; }
+      .invoice-container { width: 100%; height: auto; padding: 10px; }
+      .header { flex-direction: column; gap: 10px; }
+      .settings-content, .history-content { width: 98%; margin: 2% auto; padding: 12px; }
+      .toast-container { right: 15px; bottom: 15px; width: calc(100% - 30px); }
+    }
+    @media print {
+      body { display: block; }
+      .sidebar, .workspace-view, .print-btn, .settings-modal, .history-modal, .toast-container { display: none !important; }
+      .invoice-container { width: 100% !important; padding: 0; }
+      .invoice-box { box-shadow: none; border: none; }
+    }
+
+    /* ===== History page: full-screen layout, search, filters, CSV (only #historyModal) ===== */
+    #historyModal { overflow: hidden; background: #f4f6f8; }
+    #historyModal .history-content {
+      width: 100%; max-width: none; height: 100%; max-height: none; margin: 0; border-radius: 0;
+      padding: 14px 16px; display: flex; flex-direction: column; overflow: hidden; box-shadow: none;
+    }
+    #historyModal .history-content h3 { margin: 0 0 4px 0; font-size: 18px; }
+    #historyModal .hx-sub { font-size: 12px; color: #666; margin: 0 0 10px 0; }
+    #historyModal .hx-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    #historyModal .hx-tools input, #historyModal .hx-tools select, #historyModal .hx-tools button {
+      height: 40px; padding: 0 12px; border-radius: 6px; font-family: 'Poppins', sans-serif; font-size: 13px;
+    }
+    #historyModal .hx-tools input, #historyModal .hx-tools select { border: 1px solid #ccc; background: #fff; }
+    #historyModal .hx-tools input { flex: 1 1 220px; min-width: 0; }
+    #historyModal .hx-tools select { flex: 0 1 140px; }
+    #historyModal .hx-tools button { flex: 0 0 auto; border: none; background: #4a148c; color: #fff; cursor: pointer; font-weight: 500; white-space: nowrap; }
+    #historyModal .hx-count { font-size: 12px; color: #555; margin: 8px 2px 0; }
+    #historyModal .hx-table { flex: 1 1 auto; min-height: 0; max-height: none !important; overflow: auto !important; background: #fff; }
+    #historyModal .hx-table .custom-data-table { min-width: 760px; }
+    #historyModal .hx-table .custom-data-table th { white-space: nowrap; z-index: 2; }
+    #historyModal .hx-foot { flex: 0 0 auto; display: flex; gap: 10px; justify-content: space-between; align-items: center; padding-top: 12px; flex-wrap: wrap; }
+    @media screen and (max-width: 768px) {
+      #historyModal .history-content { padding: 10px; }
+      #historyModal .hx-tools select { flex: 1 1 42%; }
+      #historyModal .hx-tools button { flex: 1 1 100%; }
+    }
+
+    /* ===== Phone Repair Back Up page (new; only #backupModal) ===== */
+    #backupModal { overflow: hidden; background: #f4f6f8; }
+    #backupModal .history-content { width: 100%; max-width: none; height: 100%; max-height: none; margin: 0; border-radius: 0; padding: 14px 16px; display: flex; flex-direction: column; overflow: auto; box-shadow: none; }
+    #backupModal .bk-wrap { width: 100%; max-width: 720px; margin: 0 auto; }
+    #backupModal h3 { margin: 0 0 4px 0; font-size: 18px; }
+    #backupModal .bk-sub { font-size: 12px; color: #666; margin: 0 0 12px 0; }
+    #backupModal .bk-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px; margin-bottom: 12px; }
+    #backupModal .bk-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    #backupModal .bk-lbl { font-size: 12px; font-weight: 600; color: #444; display: block; margin-bottom: 6px; }
+    #backupModal input[type=text] { flex: 1 1 200px; min-width: 0; height: 40px; padding: 0 12px; border: 1px solid #ccc; border-radius: 6px; font-family: 'Poppins', sans-serif; font-size: 13px; }
+    #backupModal button.bk-btn { height: 40px; padding: 0 16px; border: none; border-radius: 6px; background: #4a148c; color: #fff; cursor: pointer; font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 500; white-space: nowrap; }
+    #backupModal button.bk-btn:disabled { opacity: .55; cursor: not-allowed; }
+    #backupModal .bk-grey { background: #6b7280 !important; }
+    #backupModal .bk-blue { background: #2563eb !important; }
+    #backupModal .bk-full { flex: 1 1 100%; }
+    #backupModal .bk-toggle-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    #backupModal .bk-sw { position: relative; width: 52px; height: 28px; border-radius: 28px; background: #cbd5e1; cursor: pointer; flex-shrink: 0; transition: background .2s; }
+    #backupModal .bk-sw::after { content: ''; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: transform .2s; }
+    #backupModal .bk-sw.on { background: #4a148c; }
+    #backupModal .bk-sw.on::after { transform: translateX(24px); }
+    #backupModal .bk-sw.busy { opacity: .6; pointer-events: none; }
+    #backupModal .bk-prog { height: 10px; border-radius: 10px; background: #e5e7eb; overflow: hidden; margin: 10px 0 0; display: none; }
+    #backupModal .bk-prog span { display: block; height: 100%; width: 0; background: #4a148c; transition: width .15s; }
+    #backupModal .bk-status { margin-top: 10px; padding: 10px; border-radius: 6px; font-size: 12px; line-height: 1.55; background: #f1f5f9; color: #334155; white-space: pre-wrap; word-break: break-word; }
+    #backupModal .bk-status.ok { background: #ecfdf5; color: #065f46; }
+    #backupModal .bk-status.err { background: #fef2f2; color: #991b1b; }
+    #backupModal .bk-status.warn { background: #fffbeb; color: #92400e; }
+    #backupModal .bk-small { font-size: 12px; color: #666; line-height: 1.5; margin-top: 8px; }
+    #backupModal .bk-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <div class="sidebar">
+    <button class="sidebar-btn active" onclick="switchView('home-view', this)">
+      <i class="fas fa-plus-circle"></i><span>New Repair</span>
+    </button>
+    <button class="sidebar-btn" onclick="switchView('store-view', this)">
+      <i class="fas fa-store"></i><span>Store View</span>
+    </button>
+    <button class="sidebar-btn" onclick="openHistoryModal()">
+      <i class="fas fa-history"></i><span>History</span>
+    </button>
+    <button class="sidebar-btn" onclick="openSettingsModal()">
+      <i class="fas fa-cog"></i><span>Settings</span>
+    </button>
+    <button class="sidebar-btn" onclick="openBackupPage()">
+      <i class="fas fa-cloud-arrow-up"></i><span>Back Up</span>
+    </button>
+  </div>
+
+  <div id="home-view" class="workspace-view active">
+    <div class="view-scroll-content">
+      <h2>New Repair Job</h2>
+      <input type="text" id="custPhone" placeholder="1. Customer Phone" oninput="updateLiveInvoiceCard()">
+      <input type="text" id="custName" placeholder="2. Customer Name" oninput="updateLiveInvoiceCard()">
+      <input type="text" id="phoneBrand" placeholder="3. Phone Brand" oninput="updateLiveInvoiceCard()">
+      <input type="text" id="phoneModel" placeholder="4. Model" oninput="updateLiveInvoiceCard()">
+      <select id="problem" onchange="updateLiveInvoiceCard()">
+        <option value="">5. Select Problem / Issue</option>
+      </select>
+      
+      <button class="btn-more-toggle" type="button" onclick="toggleMoreComplianceSection()">
+        <i class="fas fa-sliders-h"></i> <span>MORE</span>
+      </button>
+      
+      <div id="moreComplianceSection" class="more-hidden-container">
+        <div class="compliance-upload-row">
+          <div>
+            <label>Front ID Image</label>
+            <input type="file" id="uploadFrontId" accept="image/*" onchange="processFileStreamToBase64('uploadFrontId', 'hiddenFrontIdStr')">
+            <input type="hidden" id="hiddenFrontIdStr">
+          </div>
+          <div>
+            <label>Back ID Image</label>
+            <input type="file" id="uploadBackId" accept="image/*" onchange="processFileStreamToBase64('uploadBackId', 'hiddenBackIdStr')">
+            <input type="hidden" id="hiddenBackIdStr">
+          </div>
+        </div>
+        
+        <input type="text" id="idNumber" placeholder="National ID Number" oninput="updateLiveInvoiceCard()">
+        <input type="text" id="imei1" placeholder="IMEI Number 1" oninput="updateLiveInvoiceCard()">
+        <input type="text" id="imei2" placeholder="IMEI Number 2" oninput="updateLiveInvoiceCard()">
+        <input type="text" id="imei3" placeholder="IMEI Number 3" oninput="updateLiveInvoiceCard()">
+        
+        <div class="declaration-box">
+          DECLARATION AGREEMENT: The customer hereby confirms that the device left for repair is their lawful property and that all tracking metrics, including identification entries and device identifiers (IMEI values), supplied are accurate and true. The shop will not be held liable for claims arising from hidden device issues not declared prior to receipt or data loss during internal troubleshooting routines.
+        </div>
+        
+        <div style="display:flex; align-items:center; gap:8px; margin:10px 0 5px 0;">
+          <input type="checkbox" id="agreementCheckbox" style="width:auto; margin:0;" onchange="updateLiveInvoiceCard()">
+          <label for="agreementCheckbox" style="font-size:12px; font-weight:500; cursor:pointer;">I confirm the declaration</label>
+        </div>
+        
+        <div class="signature-pad-wrapper">
+          <label style="font-size:11px; font-weight:500; color:#4b5563; display:block; margin-bottom:4px; text-align:left;">Customer Signature:</label>
+          <canvas id="signaturePad" class="signature-canvas"></canvas>
+          <div class="signature-actions">
+            <button class="btn-sig-clear" type="button" onclick="clearSignatureCanvasArea()">Clear Signature</button>
+            <span style="font-size:10px; color:#9ca3af; align-self:center;">Sign above with finger/mouse</span>
+          </div>
+          <input type="hidden" id="hiddenSignatureStr">
+        </div>
+      </div>
+
+      <input type="number" id="amount" placeholder="6. Amount" oninput="calculateBalanceField()">
+      <input type="number" id="paid" placeholder="7. Amount Paid" value="0" oninput="calculateBalanceField()">
+      <input type="number" id="balance" placeholder="8. Calculated Balance" value="0" readonly style="background:#f0f0f0; font-weight:600;">
+      <label style="font-size:12px; color:#666; margin-left:2px;">Date In:</label>
+      <input type="date" id="dateIn" onchange="updateLiveInvoiceCard()">
+      <label style="font-size:12px; color:#666; margin-left:2px;">Expected Date Out:</label>
+      <input type="date" id="dateOut" onchange="updateLiveInvoiceCard()">
+      
+      <button class="print-btn" id="btnSavePrintInvoice" onclick="executePrintInvoiceSave(this)">🖨️ Save & Print Invoice</button>
+    </div>
+  </div>
+
+  <div id="store-view" class="workspace-view">
+    <div class="view-scroll-content">
+      <h3><i class="fas fa-store"></i> Store Registry</h3>
+      
+      <div class="store-filters-container">
+        <div>
+          <select id="filterMonth" onchange="applyStoreFilters()">
+            <option value="">All Months</option>
+            <option value="01">January</option><option value="02">February</option><option value="03">March</option>
+            <option value="04">April</option><option value="05">May</option><option value="06">June</option>
+            <option value="07">July</option><option value="08">August</option><option value="09">September</option>
+            <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+          </select>
+          <select id="filterYear" onchange="applyStoreFilters()">
+            <option value="">All Years</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="store-summary-grid">
+        <div class="stat-card uncompleted">
+          <div class="card-label">Uncompleted Payments</div>
+          <div class="card-value" id="cardUncompletedJobs">0 Jobs</div>
+          <div class="card-subvalue" id="cardUncompletedBalance">Bal: KSH 0.00</div>
+        </div>
+        <div class="stat-card completed">
+          <div class="card-label">Completed Payments</div>
+          <div class="card-value" id="cardCompletedJobs">0 Jobs</div>
+          <div class="card-subvalue" id="cardCompletedIncome">Inc: KSH 0.00</div>
+        </div>
+      </div>
+
+      <div class="data-table-container">
+        <table class="custom-data-table">
+          <thead>
+            <tr>
+              <th>Invoice Info</th>
+              <th>Customer / Job</th>
+              <th>Due Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="storeTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="historyModal" class="history-modal">
+    <div class="history-content">
+      <h3><i class="fas fa-history"></i> Repair Invoices History Log</h3>
+      <p class="hx-sub">Displays completed repairs records from the history tracking datasheet module.</p>
+      <div class="hx-tools">
+        <input type="search" id="historySearch" placeholder="Search name, phone, invoice, device or problem..." oninput="renderHistoryView()" autocomplete="off">
+        <select id="historyYear" onchange="renderHistoryView()" aria-label="Year"></select>
+        <select id="historyMonth" onchange="renderHistoryView()" aria-label="Month"></select>
+        <button type="button" id="historyCsvBtn" onclick="downloadHistoryCsv()"><i class="fas fa-file-csv"></i> CSV Download</button>
+      </div>
+      <div class="hx-count" id="historyCount"></div>
+      <div class="data-table-container hx-table">
+        <table class="custom-data-table">
+          <thead>
+            <tr>
+              <th>Invoice No</th>
+              <th>Date In</th>
+              <th>Customer Details</th>
+              <th>Device / Problem</th>
+              <th>Total Value</th>
+              <th>Status</th>
+              <th>Date Out</th>
+            </tr>
+          </thead>
+          <tbody id="historyTableBody"></tbody>
+        </table>
+      </div>
+      <div class="hx-foot">
+        <button type="button" id="historyMoreBtn" onclick="historyShowMore()" style="display:none; padding:10px 20px; background:#4a148c; color:white; border:none; border-radius:5px; cursor:pointer;">Show more</button>
+        <button onclick="closeHistoryModal()" style="padding:10px 20px; background:#6b7280; color:white; border:none; border-radius:5px; cursor:pointer; margin-left:auto;">Close Archive Window</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="backupModal" class="history-modal">
+    <div class="history-content">
+      <div class="bk-wrap">
+        <div class="bk-top">
+          <h3><i class="fas fa-cloud-arrow-up"></i> Phone Repair Back Up &amp; Restore</h3>
+          <button type="button" class="bk-btn bk-grey" onclick="closeBackupPage()">Close</button>
+        </div>
+        <p class="bk-sub">Backs up only Phone Repair records to your own Google Drive folder. POS and Finance backups are separate.</p>
+
+        <div class="bk-card">
+          <div class="bk-toggle-row">
+            <div><b id="bkAutoState">Automatic Backup is OFF</b>
+              <div class="bk-small" id="bkAutoHelp"></div></div>
+            <div id="bkAutoSwitch" class="bk-sw" role="switch" aria-checked="false" aria-label="Automatic Backup" tabindex="0" onclick="bkToggleAuto()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();bkToggleAuto();}"></div>
+          </div>
+        </div>
+
+        <div class="bk-card">
+          <span class="bk-lbl">Google Drive folder name</span>
+          <div class="bk-row">
+            <input type="text" id="bkFolderName" maxlength="60" placeholder="e.g. PHONE REPAIR BACKUP" autocomplete="off">
+            <button type="button" class="bk-btn" id="bkFolderSave" onclick="bkSaveFolder()">Save Folder Name</button>
+          </div>
+          <div class="bk-small" id="bkFolderNote"></div>
+        </div>
+
+        <div class="bk-card">
+          <span class="bk-lbl">Google Drive</span>
+          <div class="bk-small" id="bkDriveLine" style="margin:0 0 8px"></div>
+          <div class="bk-row">
+            <button type="button" class="bk-btn bk-blue" id="bkConnectBtn" onclick="bkConnect()">Connect Google Drive</button>
+            <button type="button" class="bk-btn bk-grey" id="bkDisconnectBtn" onclick="bkDisconnect()" style="display:none">Disconnect</button>
+          </div>
+        </div>
+
+        <div class="bk-card">
+          <div class="bk-row">
+            <button type="button" class="bk-btn bk-full" id="bkManualBtn" onclick="bkManual()">Manual Backup</button>
+            <button type="button" class="bk-btn bk-blue bk-full" id="bkRestoreBtn" onclick="bkRestore()">Restore</button>
+          </div>
+          <div class="bk-prog" id="bkProg"><span id="bkProgBar"></span></div>
+          <div class="bk-status" id="bkStatus"></div>
+          <div class="bk-small" id="bkLast"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="settingsModal" class="settings-modal">
+    <div class="settings-content">
+      <h3><i class="fas fa-cog"></i> Configuration Settings</h3>
+      <label>Company Name:</label>
+      <input type="text" id="cfgName">
+      <label>Email Address:</label>
+      <input type="email" id="cfgEmail">
+      <label>Contact Phone Line:</label>
+      <input type="text" id="cfgPhone">
+      <label>Technician Name:</label>
+      <input type="text" id="cfgTech">
+      <label>Shop Location/Address:</label>
+      <input type="text" id="cfgAddress">
+      
+      <label style="margin-top:10px; display:block; font-weight:600;">Issue Menu Selection Entries Options List:</label>
+      <div id="cfgProblemsContainer" style="border:1px solid #ccc; padding:10px; border-radius:4px; max-height:120px; overflow-y:auto; margin-bottom:5px;"></div>
+      <div style="display:flex; gap:5px;">
+        <input type="text" id="newProblemInput" placeholder="Enter custom repair category..." style="margin:0;">
+        <button id="btnAddProblemItem" onclick="appendCustomProblemItem(this)" style="padding:0 15px; background:#10b981; color:white; border:none; border-radius:4px; cursor:pointer; display:inline-flex; align-items:center;">Add Option</button>
+      </div>
+
+      <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
+        <button id="btnSaveConfig" onclick="saveConfigSettingsForm(this)" style="padding:12px 25px; background:#4a148c; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:500; display:inline-flex; align-items:center;">Save Parameters</button>
+        <button onclick="closeSettingsModal()" style="padding:12px 20px; background:#6b7280; color:white; border:none; border-radius:6px; cursor:pointer;">Dismiss</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="invoice-container">
+    <div class="invoice-box" id="invoiceBox">
+      <div class="header">
+        <div style="text-align:left; flex-grow: 1;">
+          <h1 id="invHeaderCompName" class="company-name">Your Company Name</h1>
+          <h2 id="invHeaderEmail" style="font-size:14px; margin:4px 0; font-weight:normal; color:#555;">Email: your@email.com</h2>
+          <p id="invHeaderPhone" style="margin:0; font-size:13px; color:#555;">Phone: +1234567890</p>
+          <p id="invHeaderTech" style="margin:2px 0 0 0; font-size:12px; color:#777; display:none;"></p>
+          <p id="invHeaderAddress" style="margin:2px 0 0 0; font-size:12px; color:#777; display:none;"></p>
+        </div>
+        <div id="qrcode"></div>
+      </div>
+      <hr style="border:0; border-top:1px solid #4a148c; margin-bottom:20px;">
+      
+      <p style="line-height:1.9; font-size:14px; color:#222;">
+        <b>Invoice ID Standard Ref:</b> <span id="lblInvoiceNo">---</span><br>
+        <b>Creation Date Timestamp:</b> <span id="lblInvoiceDate">---</span><br>
+        <span style="display:block; margin-top:10px; border-bottom:1px dashed #eee; padding-bottom:5px;"></span>
+        <b>1. Primary Client Mobile:</b> <span id="lblCustPhone">---</span><br>
+        <b>2. Registered Customer Name:</b> <span id="lblCustName">---</span><br>
+        <b>3. Device Make / Brand Model:</b> <span id="lblDeviceBrand">---</span><br>
+        <b>4. Device Sub Model Variant:</b> <span id="lblDeviceModel">---</span><br>
+        <b>5. Diagnosed Problem / Fault:</b> <span id="lblProblem">---</span><br>
+        
+        <span id="invoicePreviewComplianceFields" style="display:none;">
+          <b>National ID Number:</b> <span id="lblIdNumber">---</span><br>
+          <b>IMEI Number 1:</b> <span id="lblImei1">---</span><br>
+          <b>IMEI Number 2:</b> <span id="lblImei2">---</span><br>
+          <b>IMEI Number 3:</b> <span id="lblImei3">---</span><br>
+          <b>Front ID Card:</b> <span id="lblFrontIdLink">None</span><br>
+          <b>Back ID Card:</b> <span id="lblBackIdLink">None</span><br>
+        </span>
+        
+        <b>6. Quoted Operational Sum:</b> KES <span id="lblAmount">0.00</span><br>
+        <b>7. Financial Outstanding Balance:</b> <span id="lblBalanceWrapper" style="font-weight:600;">KES <span id="lblBalance">0.00</span></span><br>
+        <b>8. Incoming Intake Registration:</b> <span id="lblDateIn">---</span><br>
+        <b>9. Targeted Outward Release:</b> <span id="lblDateOut">---</span>
+      </p>
+      
+      <div id="invoicePreviewSignatureBlock" style="margin-top:20px; border-top:1px dashed #ccc; padding-top:10px; display:none;">
+        <b style="font-size:13px; display:block; margin-bottom:5px;">Customer Signature Confirmation:</b>
+        <img id="imgPreviewSignature" src="" alt="Signature Document" style="max-width:200px; height:auto; border:1px solid #f1f5f9; display:none;">
+        <span id="lblNoSignatureText" style="color:#94a3b8; font-size:12px; font-style:italic;">No signature provided.</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /*
+      ===================================================================
+      ISOLATED MODULE NAMESPACE: PhoneRepairModule
+      Supports future system integration without naming conflicts.
+      ===================================================================
+    */
+    const PhoneRepairModule = (function() {
+      // IndexedDB Constants
+      const DB_NAME = 'PhoneRepairSystemDB';
+      const DB_VERSION = 1;
+      const STORE_INVOICES = 'invoices';
+      const STORE_SETTINGS = 'settings';
+
+      let db = null;
+
+      // Database Initialization
+      function initDB() {
+        return new Promise((resolve, reject) => {
+          const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+          request.onupgradeneeded = function(e) {
+            const dbInstance = e.target.result;
+            
+            // Invoices Store with Indexes
+            if (!dbInstance.objectStoreNames.contains(STORE_INVOICES)) {
+              const invoiceStore = dbInstance.createObjectStore(STORE_INVOICES, { keyPath: 'invoiceNo' });
+              invoiceStore.createIndex('balance', 'balance', { unique: false });
+              invoiceStore.createIndex('dateIn', 'dateIn', { unique: false });
+              invoiceStore.createIndex('customerName', 'customerName', { unique: false });
+              invoiceStore.createIndex('customerPhone', 'customerPhone', { unique: false });
+            }
+
+            // Settings Store
+            if (!dbInstance.objectStoreNames.contains(STORE_SETTINGS)) {
+              dbInstance.createObjectStore(STORE_SETTINGS, { keyPath: 'id' });
+            }
+          };
+
+          request.onsuccess = function(e) {
+            db = e.target.result;
+            resolve(db);
+          };
+
+          request.onerror = function(e) {
+            console.error("IndexedDB initialization error:", e.target.error);
+            reject(e.target.error);
+          };
+        });
+      }
+
+      // Save or Update Invoice Record
+      function saveInvoice(invoiceData) {
+        return new Promise((resolve, reject) => {
+          if (!db) { reject('Database not initialized'); return; }
+          const tx = db.transaction([STORE_INVOICES], 'readwrite');
+          const store = tx.objectStore(STORE_INVOICES);
+          const req = store.put(invoiceData);
+
+          req.onsuccess = function() {
+            resolve({ status: 'success', message: 'Invoice processed successfully' });
+          };
+          req.onerror = function(e) {
+            reject({ status: 'error', message: e.target.error ? e.target.error.toString() : 'Failed to save record' });
+          };
+        });
+      }
+
+      // Delete Invoice Record
+      function deleteInvoice(invoiceNo) {
+        return new Promise((resolve, reject) => {
+          if (!db) { reject('Database not initialized'); return; }
+          const tx = db.transaction([STORE_INVOICES], 'readwrite');
+          const store = tx.objectStore(STORE_INVOICES);
+          const req = store.delete(invoiceNo);
+
+          req.onsuccess = function() {
+            resolve({ status: 'success', message: 'Invoice file record purged successfully.' });
+          };
+          req.onerror = function(e) {
+            reject({ status: 'error', message: e.target.error ? e.target.error.toString() : 'Failed to delete record' });
+          };
+        });
+      }
+
+      // Retrieve System State (Store vs History Records)
+      function getUnifiedSystemState() {
+        return new Promise((resolve, reject) => {
+          if (!db) { resolve({ storeRecords: [], historyRecords: [] }); return; }
+          const tx = db.transaction([STORE_INVOICES], 'readonly');
+          const store = tx.objectStore(STORE_INVOICES);
+          const req = store.getAll();
+
+          req.onsuccess = function() {
+            const allRecords = req.result || [];
+            const storeRecords = allRecords.filter(r => (parseFloat(r.balance) || 0) > 0);
+            const historyRecords = allRecords.filter(r => (parseFloat(r.balance) || 0) === 0);
+            resolve({ storeRecords, historyRecords, allRecords });
+          };
+          req.onerror = function(e) {
+            reject(e.target.error);
+          };
+        });
+      }
+
+      // Settings API Operations
+      function getSettings() {
+        return new Promise((resolve) => {
+          const defaultSettings = {
+            id: 'companySettings',
+            logo: "", name: "Your Company Name", email: "your@email.com", 
+            phone: "+1234567890", technician: "", address: "",
+            problems: ["Screen Replacement", "Battery Replacement", "Charging Port", "Water Damage", "Software Issue"]
+          };
+
+          if (!db) { resolve(defaultSettings); return; }
+
+          const tx = db.transaction([STORE_SETTINGS], 'readonly');
+          const store = tx.objectStore(STORE_SETTINGS);
+          const req = store.get('companySettings');
+
+          req.onsuccess = function() {
+            if (req.result) {
+              resolve(req.result);
+            } else {
+              resolve(defaultSettings);
+            }
+          };
+          req.onerror = function() {
+            resolve(defaultSettings);
+          };
+        });
+      }
+
+      function saveSettings(settingsObj) {
+        return new Promise((resolve, reject) => {
+          if (!db) { reject('Database not initialized'); return; }
+          settingsObj.id = 'companySettings';
+          const tx = db.transaction([STORE_SETTINGS], 'readwrite');
+          const store = tx.objectStore(STORE_SETTINGS);
+          const req = store.put(settingsObj);
+
+          req.onsuccess = function() { resolve(true); };
+          req.onerror = function(e) { reject(e.target.error); };
+        });
+      }
+
+      return {
+        initDB,
+        saveInvoice,
+        deleteInvoice,
+        getUnifiedSystemState,
+        getSettings,
+        saveSettings
+      };
+    })();
+
+    // State Tracking Data Elements Memory Caches
+    let globalActiveStoreCache = [];
+    let globalHistoryCache = [];
+    
+    let currentActiveInvoiceObject = {
+      invoiceNo: "", date: "", customerPhone: "", customerName: "",
+      phoneBrand: "", phoneModel: "", problem: "", amount: 0, balance: 0, dateIn: "", dateOut: "",
+      frontId: "", backId: "", idNumber: "", imei1: "", imei2: "", imei3: "", customerSignature: ""
+    };
+
+    let companySettingsObject = {
+      logo: "", name: "Your Company Name", email: "your@email.com", 
+      phone: "+1234567890", technician: "", address: "",
+      problems: []
+    };
+
+    // Canvas Element Variables 
+    let sigCanvas, sigCtx, isDrawingSignature = false;
+
+    // Toast Notification System
+    function showToast(message, type = 'info', duration = 3500) {
+      const container = document.getElementById('toastContainer');
+      if (!container) return;
+
+      const toast = document.createElement('div');
+      toast.className = `toast-message toast-${type}`;
+      
+      let iconClass = 'fa-info-circle';
+      if (type === 'success') iconClass = 'fa-check-circle';
+      else if (type === 'error') iconClass = 'fa-exclamation-circle';
+      else if (type === 'warning') iconClass = 'fa-exclamation-triangle';
+
+      toast.innerHTML = `<i class="fas ${iconClass}"></i><span>${message}</span>`;
+      container.appendChild(toast);
+
+      // Trigger animation frame
+      requestAnimationFrame(() => {
+        toast.classList.add('toast-visible');
+      });
+
+      setTimeout(() => {
+        toast.classList.remove('toast-visible');
+        setTimeout(() => {
+          if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+          }
+        }, 300);
+      }, duration);
+    }
+
+    // Button Loading Animation Handler
+    function setButtonLoading(btn, isLoading, loadingText = null) {
+      if (!btn) return;
+      if (isLoading) {
+        if (btn.dataset.isBusy === 'true') return false; // Prevent double click
+        btn.dataset.isBusy = 'true';
+        btn.dataset.originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        const label = loadingText || 'Processing...';
+        btn.innerHTML = `<span class="btn-spinner"></span>${label}`;
+        return true;
+      } else {
+        btn.disabled = false;
+        btn.dataset.isBusy = 'false';
+        if (btn.dataset.originalHtml) {
+          btn.innerHTML = btn.dataset.originalHtml;
+        }
+        return true;
+      }
+    }
+
+    // Dynamic Year & Month Dropdown Auto-Populate
+    function setupDateDropdowns() {
+      const yearSelect = document.getElementById('filterYear');
+      const monthSelect = document.getElementById('filterMonth');
+      if (!yearSelect || !monthSelect) return;
+
+      const today = new Date();
+      const currentYear = today.getFullYear();
+      const currentMonth = String(today.getMonth() + 1).padStart(2, '0');
+
+      // Populate Years (Current year - 3 to Current year + 3)
+      yearSelect.innerHTML = '<option value="">All Years</option>';
+      for (let y = currentYear - 3; y <= currentYear + 3; y++) {
+        const opt = document.createElement('option');
+        opt.value = String(y);
+        opt.textContent = String(y);
+        yearSelect.appendChild(opt);
+      }
+
+      // Set defaults to current month & current year
+      yearSelect.value = String(currentYear);
+      monthSelect.value = currentMonth;
+    }
+
+    // Central Controller Routing Module Page Selection Management View Switcher
+    function switchView(viewId, sideButtonElement) {
+      document.querySelectorAll('.workspace-view').forEach(v => v.classList.remove('active'));
+      document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
+      
+      document.getElementById(viewId).classList.add('active');
+      if (sideButtonElement) sideButtonElement.classList.add('active');
+      
+      if (viewId === 'store-view') {
+        syncSystemStatePipeline();
+      }
+    }
+
+    async function initializeSystemApplication() {
+      try {
+        await PhoneRepairModule.initDB();
+        
+        const liveDate = new Date();
+        document.getElementById('dateIn').valueAsDate = liveDate;
+        document.getElementById('dateOut').valueAsDate = liveDate;
+        
+        setupDateDropdowns();
+        initSignaturePadComponent();
+        generateRandomInvoiceNumber();
+        await pullConfigurationSettings();
+        await syncSystemStatePipeline();
+        
+        showToast('System initialized offline successfully', 'success');
+      } catch (err) {
+        console.error('System init error:', err);
+        showToast('Failed to initialize local database', 'error');
+      }
+    }
+
+    // Toggle Visibility Methods for More Section
+    function toggleMoreComplianceSection() {
+      const el = document.getElementById('moreComplianceSection');
+      el.classList.toggle('expanded');
+    }
+
+    // File Conversion Logic Stream Handler 
+    function processFileStreamToBase64(inputId, hiddenTargetId) {
+      const fileInput = document.getElementById(inputId);
+      if (fileInput.files && fileInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          document.getElementById(hiddenTargetId).value = e.target.result;
+          updateLiveInvoiceCard();
+        };
+        reader.readAsDataURL(fileInput.files[0]);
+      }
+    }
+
+    // Canvas Touch/Mouse Listener Logic Blocks
+    function initSignaturePadComponent() {
+      sigCanvas = document.getElementById('signaturePad');
+      if (!sigCanvas) return;
+      sigCtx = sigCanvas.getContext('2d');
+      
+      sigCanvas.width = sigCanvas.offsetWidth;
+      sigCanvas.height = sigCanvas.offsetHeight;
+      
+      sigCtx.strokeStyle = '#1e1b4b';
+      sigCtx.lineWidth = 2.5;
+      sigCtx.lineCap = 'round';
+
+      sigCanvas.addEventListener('mousedown', (e) => {
+        isDrawingSignature = true;
+        const pos = getCanvasInteractionCoordinates(e);
+        sigCtx.beginPath();
+        sigCtx.moveTo(pos.x, pos.y);
+      });
+      sigCanvas.addEventListener('mousemove', (e) => {
+        if (!isDrawingSignature) return;
+        const pos = getCanvasInteractionCoordinates(e);
+        sigCtx.lineTo(pos.x, pos.y);
+        sigCtx.stroke();
+      });
+      window.addEventListener('mouseup', () => {
+        if (isDrawingSignature) {
+          isDrawingSignature = false;
+          saveSignatureStringData();
+        }
+      });
+
+      sigCanvas.addEventListener('touchstart', (e) => {
+        isDrawingSignature = true;
+        const t = e.touches[0];
+        const pos = getCanvasInteractionCoordinates(t);
+        sigCtx.beginPath();
+        sigCtx.moveTo(pos.x, pos.y);
+        e.preventDefault();
+      });
+      sigCanvas.addEventListener('touchmove', (e) => {
+        if (!isDrawingSignature) return;
+        const t = e.touches[0];
+        const pos = getCanvasInteractionCoordinates(t);
+        sigCtx.lineTo(pos.x, pos.y);
+        sigCtx.stroke();
+        e.preventDefault();
+      });
+      sigCanvas.addEventListener('touchend', () => {
+        if (isDrawingSignature) {
+          isDrawingSignature = false;
+          saveSignatureStringData();
+        }
+      });
+    }
+
+    function getCanvasInteractionCoordinates(e) {
+      const rect = sigCanvas.getBoundingClientRect();
+      return {
+        x: (e.clientX || e.pageX) - rect.left,
+        y: (e.clientY || e.pageY) - rect.top
+      };
+    }
+
+    function clearSignatureCanvasArea() {
+      if (!sigCtx) return;
+      sigCtx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
+      document.getElementById('hiddenSignatureStr').value = "";
+      updateLiveInvoiceCard();
+    }
+
+    function saveSignatureStringData() {
+      const blankMarker = document.createElement('canvas');
+      blankMarker.width = sigCanvas.width;
+      blankMarker.height = sigCanvas.height;
+      if (sigCanvas.toDataURL() !== blankMarker.toDataURL()) {
+        document.getElementById('hiddenSignatureStr').value = sigCanvas.toDataURL();
+        updateLiveInvoiceCard();
+      }
+    }
+
+    function generateRandomInvoiceNumber() {
+      const generatedId = "INV-" + Math.floor(100000 + Math.random() * 900000);
+      currentActiveInvoiceObject.invoiceNo = generatedId;
+      currentActiveInvoiceObject.date = new Date().toLocaleDateString('en-GB');
+      
+      document.getElementById('lblInvoiceNo').textContent = generatedId;
+      document.getElementById('lblInvoiceDate').textContent = currentActiveInvoiceObject.date;
+      
+      document.getElementById('qrcode').innerHTML = "";
+      new QRCode(document.getElementById("qrcode"), { text: generatedId, width: 70, height: 70 });
+    }
+
+    function calculateBalanceField() {
+      const amt = parseFloat(document.getElementById('amount').value) || 0;
+      const pd = parseFloat(document.getElementById('paid').value) || 0;
+      const bal = amt - pd;
+      
+      document.getElementById('balance').value = bal;
+      updateLiveInvoiceCard();
+    }
+
+    function updateLiveInvoiceCard() {
+      currentActiveInvoiceObject.customerPhone = document.getElementById('custPhone').value || "---";
+      currentActiveInvoiceObject.customerName = document.getElementById('custName').value || "---";
+      currentActiveInvoiceObject.phoneBrand = document.getElementById('phoneBrand').value || "---";
+      currentActiveInvoiceObject.phoneModel = document.getElementById('phoneModel').value || "---";
+      currentActiveInvoiceObject.problem = document.getElementById('problem').value || "---";
+      currentActiveInvoiceObject.amount = parseFloat(document.getElementById('amount').value) || 0;
+      currentActiveInvoiceObject.balance = parseFloat(document.getElementById('balance').value) || 0;
+      currentActiveInvoiceObject.dateIn = document.getElementById('dateIn').value || "---";
+      currentActiveInvoiceObject.dateOut = document.getElementById('dateOut').value || "---";
+      
+      currentActiveInvoiceObject.idNumber = document.getElementById('idNumber').value || "";
+      currentActiveInvoiceObject.imei1 = document.getElementById('imei1').value || "";
+      currentActiveInvoiceObject.imei2 = document.getElementById('imei2').value || "";
+      currentActiveInvoiceObject.imei3 = document.getElementById('imei3').value || "";
+      currentActiveInvoiceObject.frontId = document.getElementById('hiddenFrontIdStr').value || "";
+      currentActiveInvoiceObject.backId = document.getElementById('hiddenBackIdStr').value || "";
+      currentActiveInvoiceObject.customerSignature = document.getElementById('hiddenSignatureStr').value || "";
+
+      document.getElementById('lblCustPhone').textContent = currentActiveInvoiceObject.customerPhone;
+      document.getElementById('lblCustName').textContent = currentActiveInvoiceObject.customerName;
+      document.getElementById('lblDeviceBrand').textContent = currentActiveInvoiceObject.phoneBrand;
+      document.getElementById('lblDeviceModel').textContent = currentActiveInvoiceObject.phoneModel;
+      document.getElementById('lblProblem').textContent = currentActiveInvoiceObject.problem;
+      document.getElementById('lblAmount').textContent = currentActiveInvoiceObject.amount.toFixed(2);
+      document.getElementById('lblBalance').textContent = currentActiveInvoiceObject.balance.toFixed(2);
+      document.getElementById('lblDateIn').textContent = parseInputDateFormat(currentActiveInvoiceObject.dateIn);
+      document.getElementById('lblDateOut').textContent = parseInputDateFormat(currentActiveInvoiceObject.dateOut);
+
+      const isComplianceFilled = currentActiveInvoiceObject.idNumber || currentActiveInvoiceObject.imei1 || currentActiveInvoiceObject.frontId || currentActiveInvoiceObject.backId;
+      const previewComplianceBlock = document.getElementById('invoicePreviewComplianceFields');
+      if (isComplianceFilled) {
+        previewComplianceBlock.style.display = 'block';
+        document.getElementById('lblIdNumber').textContent = currentActiveInvoiceObject.idNumber || "---";
+        document.getElementById('lblImei1').textContent = currentActiveInvoiceObject.imei1 || "---";
+        document.getElementById('lblImei2').textContent = currentActiveInvoiceObject.imei2 || "---";
+        document.getElementById('lblImei3').textContent = currentActiveInvoiceObject.imei3 || "---";
+        
+        renderFileOpenLinkElement('lblFrontIdLink', currentActiveInvoiceObject.frontId, 'Front_ID');
+        renderFileOpenLinkElement('lblBackIdLink', currentActiveInvoiceObject.backId, 'Back_ID');
+      } else {
+        previewComplianceBlock.style.display = 'none';
+      }
+
+      const signatureBlock = document.getElementById('invoicePreviewSignatureBlock');
+      const sigImg = document.getElementById('imgPreviewSignature');
+      const noSigTxt = document.getElementById('lblNoSignatureText');
+      
+      signatureBlock.style.display = 'block';
+      if (currentActiveInvoiceObject.customerSignature) {
+        sigImg.src = currentActiveInvoiceObject.customerSignature;
+        sigImg.style.display = 'block';
+        noSigTxt.style.display = 'none';
+      } else {
+        sigImg.style.display = 'none';
+        noSigTxt.style.display = 'inline';
+      }
+
+      const labelWrapper = document.getElementById('lblBalanceWrapper');
+      labelWrapper.style.color = (currentActiveInvoiceObject.balance > 0) ? "#ef4444" : "#10b981";
+    }
+
+    function renderFileOpenLinkElement(targetId, base64Str, nameTag) {
+      const container = document.getElementById(targetId);
+      if (base64Str && base64Str.startsWith('data:')) {
+        container.innerHTML = `<a href="${base64Str}" target="_blank" style="color:#4a148c; font-weight:600; text-decoration:underline;">View Attached File (${nameTag})</a>`;
+      } else {
+        container.textContent = "None Attached";
+      }
+    }
+
+    function parseInputDateFormat(val) {
+      if (!val || val === "---") return "---";
+      if (val.includes('/')) return val;
+      const d = new Date(val);
+      return isNaN(d.getTime()) ? val : d.toLocaleDateString('en-GB');
+    }
+
+    // Persistent IndexedDB State Pipeline
+    async function syncSystemStatePipeline() {
+      try {
+        const stateObj = await PhoneRepairModule.getUnifiedSystemState();
+        globalActiveStoreCache = stateObj.storeRecords || [];
+        globalHistoryCache = stateObj.historyRecords || [];
+        applyStoreFilters();
+      } catch(err) {
+        console.error("Sync error:", err);
+        showToast("Error reading local database records", "error");
+      }
+    }
+
+    async function executePrintInvoiceSave(btnElement) {
+      if (!document.getElementById('custPhone').value.trim() || !document.getElementById('custName').value.trim()) {
+        showToast('Provide at least Customer Name and Phone Contact info', 'warning');
+        Swal.fire({ icon: 'warning', title: 'Data Missing', text: 'Provide at least Customer Name and Phone Contact info.', confirmButtonColor: '#4a148c' });
+        return;
+      }
+      
+      const isExpanded = document.getElementById('moreComplianceSection').classList.contains('expanded');
+      if (isExpanded && !document.getElementById('agreementCheckbox').checked) {
+        showToast('Declaration confirmation is required', 'warning');
+        Swal.fire({ icon: 'warning', title: 'Declaration Requirement', text: 'You must check the confirmation checkbox to declare info correctness before saving.', confirmButtonColor: '#4a148c' });
+        return;
+      }
+
+      const started = setButtonLoading(btnElement, true, ' Saving Invoice...');
+      if (!started) return;
+
+      try {
+        const res = await PhoneRepairModule.saveInvoice(currentActiveInvoiceObject);
+        if (res.status === 'success') {
+          window.print();
+          showToast(`Invoice ${currentActiveInvoiceObject.invoiceNo} saved successfully`, 'success');
+          Swal.fire({ icon: 'success', title: 'Job Saved', text: 'Record filed securely.', timer: 1500, showConfirmButton: false });
+          clearInvoiceEntryForm();
+          await syncSystemStatePipeline();
+        } else {
+          showToast(res.message || 'Failed to save invoice', 'error');
+        }
+      } catch (err) {
+        console.error("Save error:", err);
+        showToast('Error executing database write', 'error');
+      } finally {
+        setButtonLoading(btnElement, false);
+      }
+    }
+
+    function clearInvoiceEntryForm() {
+      document.getElementById('custPhone').value = "";
+      document.getElementById('custName').value = "";
+      document.getElementById('phoneBrand').value = "";
+      document.getElementById('phoneModel').value = "";
+      document.getElementById('problem').selectedIndex = 0;
+      
+      document.getElementById('idNumber').value = "";
+      document.getElementById('imei1').value = "";
+      document.getElementById('imei2').value = "";
+      document.getElementById('imei3').value = "";
+      document.getElementById('uploadFrontId').value = "";
+      document.getElementById('uploadBackId').value = "";
+      document.getElementById('hiddenFrontIdStr').value = "";
+      document.getElementById('hiddenBackIdStr').value = "";
+      document.getElementById('agreementCheckbox').checked = false;
+      clearSignatureCanvasArea();
+      
+      document.getElementById('moreComplianceSection').classList.remove('expanded');
+      
+      document.getElementById('amount').value = "";
+      document.getElementById('paid').value = "0";
+      document.getElementById('balance').value = "0";
+      generateRandomInvoiceNumber();
+      updateLiveInvoiceCard();
+    }
+
+    // Dashboard Internal Filter Operations Engine
+    function applyStoreFilters() {
+      const targetMonth = document.getElementById('filterMonth').value; 
+      const targetYear = document.getElementById('filterYear').value;   
+
+      let filteredStoreRows = parseRowDataArrayByDateParameters(globalActiveStoreCache, targetMonth, targetYear);
+      let filteredHistoryRows = parseRowDataArrayByDateParameters(globalHistoryCache, targetMonth, targetYear);
+
+      let jobsUncompletedCount = 0;
+      let totalOutstandingBalanceKsh = 0;
+
+      let jobsCompletedCount = 0;
+      let totalEarnedIncomeKsh = 0;
+
+      filteredStoreRows.forEach(r => {
+        const rowAmount = parseFloat(r.amount) || 0;
+        const rowBalance = parseFloat(r.balance) || 0;
+        const rowCollectedPaid = rowAmount - rowBalance;
+
+        if (rowBalance > 0) {
+          jobsUncompletedCount++;
+          totalOutstandingBalanceKsh += rowBalance;
+        } else {
+          jobsCompletedCount++;
+        }
+        if (rowCollectedPaid > 0) {
+          totalEarnedIncomeKsh += rowCollectedPaid;
+        }
+      });
+
+      filteredHistoryRows.forEach(h => {
+        const archiveAmount = parseFloat(h.amount) || 0;
+        jobsCompletedCount++;
+        totalEarnedIncomeKsh += archiveAmount;
+      });
+
+      document.getElementById('cardUncompletedJobs').textContent = jobsUncompletedCount + " Jobs";
+      document.getElementById('cardUncompletedBalance').textContent = "Bal: KSH " + totalOutstandingBalanceKsh.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+      document.getElementById('cardCompletedJobs').textContent = jobsCompletedCount + " Jobs";
+      document.getElementById('cardCompletedIncome').textContent = "Inc: KSH " + totalEarnedIncomeKsh.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+      renderStoreDashboardTableGrid(filteredStoreRows);
+    }
+
+    function parseRowDataArrayByDateParameters(dataArr, mm, yyyy) {
+      if (!mm && !yyyy) return [...dataArr];
+      return dataArr.filter(r => {
+        let dateString = r.dateIn || r.date || "";
+        let foundY = ""; let foundM = "";
+        
+        if (dateString.includes('-')) {
+          const parts = dateString.split('-');
+          foundY = parts[0]; foundM = parts[1];
+        } else if (dateString.includes('/')) {
+          const parts = dateString.split('/');
+          foundY = parts[2]; foundM = parts[1];
+        }
+        
+        const matchM = mm ? (foundM.toString().padStart(2, '0') === mm.toString().padStart(2, '0')) : true;
+        const matchY = yyyy ? (foundY.toString() === yyyy.toString()) : true;
+        return matchM && matchY;
+      });
+    }
+
+    function renderStoreDashboardTableGrid(rows) {
+      const tbody = document.getElementById('storeTableBody');
+      tbody.innerHTML = '';
+      
+      if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:20px; color:#999;">No active records matching filters found.</td></tr>`;
+        return;
+      }
+
+      rows.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>
+            <strong style="color:#4a148c;">${r.invoiceNo}</strong><br>
+            <small style="color:#555;">In: ${parseInputDateFormat(r.dateIn)}</small>
+          </td>
+          <td>
+            <b>${r.customerName}</b><br>
+            <small style="color:#666;">${r.phoneBrand} ${r.phoneModel}</small>
+          </td>
+          <td>
+            <span style="font-size:11px; color:#666;">Total: ${r.amount}</span><br>
+            <strong style="color:${r.balance > 0 ? '#ef4444' : '#10b981'};">Due: KES ${r.balance.toFixed(2)}</strong>
+          </td>
+          <td>
+            <div class="row-action-links">
+              <button class="btn-eye-row" onclick="triggerRowActionEye('${r.invoiceNo}')" title="View customer details"><i class="fas fa-eye"></i></button>
+              <button class="btn-edit-row" onclick="triggerRowActionEdit('${r.invoiceNo}')" title="Edit record"><i class="fas fa-edit"></i></button>
+              <button class="btn-pay-row" onclick="triggerRowActionPayment('${r.invoiceNo}')" title="Print/Pick Payment"><i class="fas fa-print"></i></button>
+              <button class="btn-del-row" onclick="triggerRowActionDelete('${r.invoiceNo}')" title="Delete record"><i class="fas fa-trash"></i></button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // TABLE FEATURES: ACTION ICON TRIGGER FUNCTIONS
+    function triggerRowActionEye(invoiceNo) {
+      const match = globalActiveStoreCache.find(r => r.invoiceNo === invoiceNo);
+      if (!match) return;
+      
+      document.getElementById('lblInvoiceNo').textContent = match.invoiceNo;
+      document.getElementById('lblInvoiceDate').textContent = match.date;
+      document.getElementById('lblCustPhone').textContent = match.customerPhone;
+      document.getElementById('lblCustName').textContent = match.customerName;
+      document.getElementById('lblDeviceBrand').textContent = match.phoneBrand;
+      document.getElementById('lblDeviceModel').textContent = match.phoneModel;
+      document.getElementById('lblProblem').textContent = match.problem;
+      document.getElementById('lblAmount').textContent = match.amount.toFixed(2);
+      document.getElementById('lblBalance').textContent = match.balance.toFixed(2);
+      document.getElementById('lblDateIn').textContent = parseInputDateFormat(match.dateIn);
+      document.getElementById('lblDateOut').textContent = parseInputDateFormat(match.dateOut);
+      
+      const complianceBlock = document.getElementById('invoicePreviewComplianceFields');
+      if (match.idNumber || match.imei1 || match.frontId || match.backId) {
+        complianceBlock.style.display = 'block';
+        document.getElementById('lblIdNumber').textContent = match.idNumber || "---";
+        document.getElementById('lblImei1').textContent = match.imei1 || "---";
+        document.getElementById('lblImei2').textContent = match.imei2 || "---";
+        document.getElementById('lblImei3').textContent = match.imei3 || "---";
+        renderFileOpenLinkElement('lblFrontIdLink', match.frontId, 'Front_ID');
+        renderFileOpenLinkElement('lblBackIdLink', match.backId, 'Back_ID');
+      } else {
+        complianceBlock.style.display = 'none';
+      }
+
+      const signatureBlock = document.getElementById('invoicePreviewSignatureBlock');
+      const sigImg = document.getElementById('imgPreviewSignature');
+      const noSigTxt = document.getElementById('lblNoSignatureText');
+      signatureBlock.style.display = 'block';
+      if (match.customerSignature) {
+        sigImg.src = match.customerSignature;
+        sigImg.style.display = 'block';
+        noSigTxt.style.display = 'none';
+      } else {
+        sigImg.style.display = 'none';
+        noSigTxt.style.display = 'inline';
+      }
+      
+      document.getElementById('qrcode').innerHTML = "";
+      new QRCode(document.getElementById("qrcode"), { text: match.invoiceNo, width: 70, height: 70 });
+      
+      showToast(`Loaded invoice ${match.invoiceNo} into preview`, 'info');
+      Swal.fire({ title: 'Customer Record View', text: `Invoice data for ${match.customerName} pushed to main preview layout canvas on right screen.`, icon: 'info', confirmButtonColor: '#4a148c' });
+    }
+
+    function triggerRowActionEdit(invoiceNo) {
+      const match = globalActiveStoreCache.find(r => r.invoiceNo === invoiceNo);
+      if (!match) return;
+
+      Swal.fire({
+        title: `Modify Record ${invoiceNo}`,
+        html: `
+          <div style="text-align:left; font-size:13px; color:#444; max-height:60vh; overflow-y:auto; padding-right:5px;">
+            <label>Customer Name:</label><input id="modName" class="swal2-input" style="margin:5px 0 12px 0; width:100%;" value="${match.customerName}">
+            <label>Customer Phone:</label><input id="modPhone" class="swal2-input" style="margin:5px 0 12px 0; width:100%;" value="${match.customerPhone}">
+            <label>Device Brand:</label><input id="modBrand" class="swal2-input" style="margin:5px 0 12px 0; width:100%;" value="${match.phoneBrand}">
+            <label>Sub-Model:</label><input id="modModel" class="swal2-input" style="margin:5px 0 12px 0; width:100%;" value="${match.phoneModel}">
+            <label>ID Number:</label><input id="modIdNumber" class="swal2-input" style="margin:5px 0 12px 0; width:100%;" value="${match.idNumber || ''}">
+            <label>IMEI 1:</label><input id="modImei1" class="swal2-input" style="margin:5px 0 12px 0; width:100%;" value="${match.imei1 || ''}">
+            <label>IMEI 2:</label><input id="modImei2" class="swal2-input" style="margin:5px 0 12px 0; width:100%;" value="${match.imei2 || ''}">
+            <label>IMEI 3:</label><input id="modImei3" class="swal2-input" style="margin:5px 0 12px 0; width:100%;" value="${match.imei3 || ''}">
+            <label>Total Job Cost Amount:</label><input id="modAmount" type="number" class="swal2-input" style="margin:5px 0 12px 0; width:100%;" value="${match.amount}">
+            <label>Remaining Balance Owed:</label><input id="modBalance" type="number" class="swal2-input" style="margin:5px 0 12px 0; width:100%;" value="${match.balance}">
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Save Overwrites',
+        confirmButtonColor: '#4a148c',
+        preConfirm: () => {
+          return {
+            invoiceNo: match.invoiceNo,
+            customerPhone: document.getElementById('modPhone').value,
+            customerName: document.getElementById('modName').value,
+            phoneBrand: document.getElementById('modBrand').value,
+            phoneModel: document.getElementById('modModel').value,
+            idNumber: document.getElementById('modIdNumber').value,
+            imei1: document.getElementById('modImei1').value,
+            imei2: document.getElementById('modImei2').value,
+            imei3: document.getElementById('modImei3').value,
+            problem: match.problem,
+            amount: parseFloat(document.getElementById('modAmount').value) || 0,
+            balance: parseFloat(document.getElementById('modBalance').value) || 0,
+            dateIn: match.dateIn,
+            dateOut: match.dateOut,
+            date: match.date,
+            frontId: match.frontId,
+            backId: match.backId,
+            customerSignature: match.customerSignature
+          }
+        }
+      }).then(async (res) => {
+        if (res.isConfirmed) {
+          try {
+            const out = await PhoneRepairModule.saveInvoice(res.value);
+            showToast(`Invoice ${invoiceNo} updated successfully`, 'success');
+            Swal.fire('Data Committed', out.message, 'success');
+            await syncSystemStatePipeline();
+          } catch(err) {
+            console.error("Edit save error:", err);
+            showToast('Failed to save updated invoice', 'error');
+          }
+        }
+      });
+    }
+
+    function triggerRowActionPayment(invoiceNo) {
+      const match = globalActiveStoreCache.find(r => r.invoiceNo === invoiceNo);
+      if (!match) return;
+
+      Swal.fire({
+        title: 'Collect Payment / Print Pick',
+        text: `Active remaining uncompleted due balance amount for ${match.customerName}: KSH ${match.balance.toFixed(2)}`,
+        input: 'number',
+        inputAttributes: { min: 0, max: match.balance, step: 'any' },
+        inputPlaceholder: 'Enter custom payment collection payload amount...',
+        showCancelButton: true,
+        confirmButtonText: '🖨️ Collect & Print Receipt',
+        confirmButtonColor: '#10b981',
+        inputValidator: (val) => {
+          if (!val || isNaN(val) || parseFloat(val) < 0) return 'Input valid transaction balance deduction criteria!';
+          if (parseFloat(val) > match.balance) return 'Collection overflow limit exceeded payload parameters!';
+        }
+      }).then(async (result) => {
+        if (result.isConfirmed) {
+          const collectedSum = parseFloat(result.value);
+          const computedNewBalance = match.balance - collectedSum;
+          
+          const patchPayload = {
+            invoiceNo: match.invoiceNo,
+            customerPhone: match.customerPhone,
+            customerName: match.customerName,
+            phoneBrand: match.phoneBrand,
+            phoneModel: match.phoneModel,
+            problem: match.problem,
+            amount: match.amount,
+            balance: computedNewBalance,
+            dateIn: match.dateIn,
+            dateOut: new Date().toISOString().split('T')[0],
+            date: match.date,
+            frontId: match.frontId,
+            backId: match.backId,
+            idNumber: match.idNumber,
+            imei1: match.imei1,
+            imei2: match.imei2,
+            imei3: match.imei3,
+            customerSignature: match.customerSignature
+          };
+
+          try {
+            await PhoneRepairModule.saveInvoice(patchPayload);
+
+            document.getElementById('lblInvoiceNo').textContent = match.invoiceNo;
+            document.getElementById('lblInvoiceDate').textContent = match.date;
+            document.getElementById('lblCustPhone').textContent = match.customerPhone;
+            document.getElementById('lblCustName').textContent = match.customerName;
+            document.getElementById('lblDeviceBrand').textContent = match.phoneBrand;
+            document.getElementById('lblDeviceModel').textContent = match.phoneModel;
+            document.getElementById('lblProblem').textContent = match.problem;
+            document.getElementById('lblAmount').textContent = match.amount.toFixed(2);
+            document.getElementById('lblBalance').textContent = computedNewBalance.toFixed(2);
+            
+            const cpBlock = document.getElementById('invoicePreviewComplianceFields');
+            if (match.idNumber || match.imei1 || match.frontId || match.backId) {
+              cpBlock.style.display = 'block';
+              document.getElementById('lblIdNumber').textContent = match.idNumber || "---";
+              document.getElementById('lblImei1').textContent = match.imei1 || "---";
+              document.getElementById('lblImei2').textContent = match.imei2 || "---";
+              document.getElementById('lblImei3').textContent = match.imei3 || "---";
+              renderFileOpenLinkElement('lblFrontIdLink', match.frontId, 'Front_ID');
+              renderFileOpenLinkElement('lblBackIdLink', match.backId, 'Back_ID');
+            } else {
+              cpBlock.style.display = 'none';
+            }
+
+            const sigBlock = document.getElementById('invoicePreviewSignatureBlock');
+            const sigImg = document.getElementById('imgPreviewSignature');
+            const noSigTxt = document.getElementById('lblNoSignatureText');
+            sigBlock.style.display = 'block';
+            if (match.customerSignature) {
+              sigImg.src = match.customerSignature;
+              sigImg.style.display = 'block';
+              noSigTxt.style.display = 'none';
+            } else {
+              sigImg.style.display = 'none';
+              noSigTxt.style.display = 'inline';
+            }
+
+            document.getElementById('lblBalanceWrapper').style.color = (computedNewBalance > 0) ? "#ef4444" : "#10b981";
+
+            window.print();
+            
+            if (computedNewBalance === 0) {
+              showToast(`Payment completed for ${match.invoiceNo}`, 'success');
+              Swal.fire('Job Completed Successfully', 'Balance completely settled. Record safely transitioned from Store to History Archives.', 'success');
+            } else {
+              showToast(`Payment of KSH ${collectedSum.toFixed(2)} recorded`, 'success');
+              Swal.fire('Payment Partial Action Accepted', `Collected KSH ${collectedSum.toFixed(2)}. Remaining due: KSH ${computedNewBalance.toFixed(2)}`, 'success');
+            }
+            await syncSystemStatePipeline();
+          } catch(err) {
+            console.error("Payment save error:", err);
+            showToast('Failed to record payment', 'error');
+          }
+        }
+      });
+    }
+
+    function triggerRowActionDelete(invoiceNo) {
+      Swal.fire({
+        title: 'Confirm Deletion Trace',
+        text: `Are you sure you want to drop record reference index pointer entry ${invoiceNo}? This action removes data permanently.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        confirmButtonText: 'Purge Row Data Entry'
+      }).then(async (res) => {
+        if (res.isConfirmed) {
+          try {
+            const serverOut = await PhoneRepairModule.deleteInvoice(invoiceNo);
+            showToast(`Invoice ${invoiceNo} deleted`, 'info');
+            Swal.fire('Dropped Row', serverOut.message, 'success');
+            await syncSystemStatePipeline();
+          } catch(err) {
+            console.error("Delete error:", err);
+            showToast('Failed to delete invoice record', 'error');
+          }
+        }
+      });
+    }
+
+    // MODAL WINDOW INTERACTION LOGIC
+    /* ===== HISTORY PAGE: instant search + Year/Month filters + CSV (reads the existing records; changes nothing) ===== */
+    const HX_PAGE = 300;
+    let _hxKeys = [], _hxFiltered = [], _hxShown = 0, _hxRaf = 0, _hxReady = false;
+    const HX_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+    function hxEsc(v) {
+      return String(v === undefined || v === null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    /* [year, month] of a record (same date formats the Store view already understands); Date In first, then Date Out. */
+    function hxYM(r) {
+      const tryParse = function(ds) {
+        ds = String(ds || '');
+        if (ds.indexOf('-') > -1) { const p = ds.split('-'); if (p[0].length === 4) return [p[0], p[1]]; }
+        if (ds.indexOf('/') > -1) { const p = ds.split('/'); if (p.length === 3) return [p[2], p[1]]; }
+        return null;
+      };
+      return tryParse(r.dateIn) || tryParse(r.dateOut) || ['', ''];
+    }
+    function hxBuildKeys() {
+      _hxKeys = globalHistoryCache.map(function(h) {
+        return [h.invoiceNo, h.customerName, h.customerPhone, h.phoneBrand, h.phoneModel, h.problem, h.dateIn, h.dateOut,
+                parseInputDateFormat(h.dateIn), parseInputDateFormat(h.dateOut)].join(' ').toLowerCase();
+      });
+    }
+    function hxSetupFilters() {
+      const now = new Date(), cy = String(now.getFullYear()), cm = now.getMonth();
+      const years = {}; years[cy] = 1;
+      globalHistoryCache.forEach(function(h) { const y = hxYM(h)[0]; if (/^\d{4}$/.test(y)) years[y] = 1; });
+      const ys = Object.keys(years).sort(function(a, b) { return b - a; });
+      document.getElementById('historyYear').innerHTML = ys.map(function(y) { return '<option value="' + y + '"' + (y === cy ? ' selected' : '') + '>' + y + '</option>'; }).join('');
+      document.getElementById('historyMonth').innerHTML = '<option value="ALL">All Months</option>' +
+        HX_MONTHS.map(function(m, i) { return '<option value="' + i + '"' + (i === cm ? ' selected' : '') + '>' + m + '</option>'; }).join('');
+      document.getElementById('historySearch').value = '';
+    }
+    /* Records matching the selected Year + Month (used by the table AND the CSV). */
+    function hxDateFiltered() {
+      const y = document.getElementById('historyYear').value, m = document.getElementById('historyMonth').value;
+      const out = [];
+      for (let i = 0; i < globalHistoryCache.length; i++) {
+        const h = globalHistoryCache[i], ym = hxYM(h);
+        if (ym[0] !== y) continue;
+        if (m !== 'ALL' && (parseInt(ym[1], 10) - 1) !== parseInt(m, 10)) continue;
+        out.push(i);
+      }
+      return out;
+    }
+    function renderHistoryView() {
+      if (_hxRaf) return;
+      _hxRaf = requestAnimationFrame(function() { _hxRaf = 0; hxRenderNow(); });   // coalesces fast typing into one render, no delay
+    }
+    function hxRenderNow() {
+      if (!_hxReady) return;
+      const q = document.getElementById('historySearch').value.toLowerCase().trim();
+      const tokens = q ? q.split(/\s+/) : [];
+      const idx = hxDateFiltered();
+      _hxFiltered = tokens.length ? idx.filter(function(i) { const k = _hxKeys[i]; return tokens.every(function(t) { return k.indexOf(t) !== -1; }); }) : idx;
+      _hxShown = 0;
+      document.getElementById('historyTableBody').innerHTML = '';
+      hxAppendRows();
+    }
+    function hxAppendRows() {
+      const tbody = document.getElementById('historyTableBody');
+      const next = Math.min(_hxFiltered.length, _hxShown + HX_PAGE);
+      let html = '';
+      for (let n = _hxShown; n < next; n++) {
+        const h = globalHistoryCache[_hxFiltered[n]];
+        html += '<tr><td><b>' + hxEsc(h.invoiceNo) + '</b></td><td>' + hxEsc(parseInputDateFormat(h.dateIn)) + '</td>' +
+          '<td>' + hxEsc(h.customerName) + '<br><small>' + hxEsc(h.customerPhone) + '</small></td>' +
+          '<td>' + hxEsc(h.phoneBrand) + ' ' + hxEsc(h.phoneModel) + '<br><small style="background:#eee; padding:1px 4px; border-radius:3px;">' + hxEsc(h.problem) + '</small></td>' +
+          '<td>KES ' + (parseFloat(h.amount) || 0).toFixed(2) + '</td>' +
+          '<td><span style="color:#10b981; font-weight:600;"><i class="fas fa-check-circle"></i> Paid Closed</span></td>' +
+          '<td>' + hxEsc(parseInputDateFormat(h.dateOut)) + '</td></tr>';
+      }
+      if (_hxShown === 0 && !html) {
+        const msg = globalHistoryCache.length === 0 ? 'Historical archives log database currently empty.' : 'No history records match the selected year, month and search.';
+        html = '<tr><td colspan="7" style="text-align:center; color:#888; padding:15px;">' + msg + '</td></tr>';
+      }
+      tbody.insertAdjacentHTML('beforeend', html);
+      _hxShown = next;
+      document.getElementById('historyCount').textContent = 'Showing ' + _hxShown + ' of ' + _hxFiltered.length + ' record(s)';
+      const more = document.getElementById('historyMoreBtn');
+      if (_hxShown < _hxFiltered.length) { more.style.display = ''; more.textContent = 'Show more (' + (_hxFiltered.length - _hxShown) + ' remaining)'; }
+      else more.style.display = 'none';
+    }
+    function historyShowMore() { hxAppendRows(); }
+
+    /* CSV: exactly two columns (Customer Name, Phone Number), for the selected Year + Month only. */
+    function hxCsvCell(v) {
+      v = String(v === undefined || v === null ? '' : v).replace(/\r?\n|\r/g, ' ').trim();
+      return /[",]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+    }
+    function downloadHistoryCsv() {
+      if (!_hxReady) return;
+      const idx = hxDateFiltered(), seen = new Set(), lines = ['Customer Name,Phone Number'];
+      for (let n = 0; n < idx.length; n++) {
+        const h = globalHistoryCache[idx[n]];
+        const name = String(h.customerName || '').replace(/\s+/g, ' ').trim(), phone = String(h.customerPhone || '').trim();
+        if (!name && !phone) continue;
+        const key = name.toLowerCase() + '|' + phone;
+        if (seen.has(key)) continue;                 // one row per customer
+        seen.add(key);
+        lines.push(hxCsvCell(name) + ',' + hxCsvCell(phone));
+      }
+      if (lines.length === 1) { showToast('No customers found for the selected year and month', 'warning'); return; }
+      const y = document.getElementById('historyYear').value, m = document.getElementById('historyMonth').value;
+      const fname = 'Phone_Repair_Customers_' + y + '_' + (m === 'ALL' ? 'All_Months' : HX_MONTHS[parseInt(m, 10)]) + '.csv';
+      const blob = new Blob(['\ufeff' + lines.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob), a = document.createElement('a');
+      a.href = url; a.download = fname; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function() { URL.revokeObjectURL(url); }, 30000);
+      showToast('CSV downloaded (' + (lines.length - 1) + ' customers)', 'success');
+    }
+
+    async function openHistoryModal() {
+      document.getElementById('historyModal').style.display = 'block';
+      try {
+        const stateObj = await PhoneRepairModule.getUnifiedSystemState();
+        globalHistoryCache = stateObj.historyRecords || [];
+        hxBuildKeys();
+        hxSetupFilters();
+        _hxReady = true;
+        hxRenderNow();
+      } catch(err) {
+        console.error("History pull error:", err);
+        showToast('Error loading history records', 'error');
+      }
+    }
+
+    function closeHistoryModal() { document.getElementById('historyModal').style.display = 'none'; }
+
+    async function openSettingsModal() {
+      document.getElementById('settingsModal').style.display = 'block';
+      await pullConfigurationSettings();
+    }
+
+    function closeSettingsModal() { document.getElementById('settingsModal').style.display = 'none'; }
+
+    async function pullConfigurationSettings() {
+      try {
+        const cfg = await PhoneRepairModule.getSettings();
+        if (cfg) {
+          companySettingsObject = cfg;
+          document.getElementById('cfgName').value = cfg.name || '';
+          document.getElementById('cfgEmail').value = cfg.email || '';
+          document.getElementById('cfgPhone').value = cfg.phone || '';
+          document.getElementById('cfgTech').value = cfg.technician || '';
+          document.getElementById('cfgAddress').value = cfg.address || '';
+          
+          document.getElementById('invHeaderCompName').textContent = cfg.name || 'Your Company Name';
+          document.getElementById('invHeaderEmail').textContent = 'Email: ' + (cfg.email || 'your@email.com');
+          document.getElementById('invHeaderPhone').textContent = 'Phone: ' + (cfg.phone || '+1234567890');
+          
+          const techLabel = document.getElementById('invHeaderTech');
+          if (cfg.technician) {
+            techLabel.textContent = "Technician Assignee: " + cfg.technician;
+            techLabel.style.display = "block";
+          } else { techLabel.style.display = "none"; }
+
+          const addrLabel = document.getElementById('invHeaderAddress');
+          if (cfg.address) {
+            addrLabel.textContent = "Location: " + cfg.address;
+            addrLabel.style.display = "block";
+          } else { addrLabel.style.display = "none"; }
+
+          buildProblemsConfigurationListElements();
+          rebuildDropdownProblemOptions();
+        }
+      } catch(err) {
+        console.error("Settings error:", err);
+      }
+    }
+
+    function buildProblemsConfigurationListElements() {
+      const container = document.getElementById('cfgProblemsContainer');
+      container.innerHTML = '';
+      if (!companySettingsObject.problems) companySettingsObject.problems = [];
+      
+      companySettingsObject.problems.forEach((p, idx) => {
+        const item = document.createElement('div');
+        item.style.cssText = "display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f0f0f0; padding:4px 0;";
+        item.innerHTML = `
+          <span style="font-size:13px; flex-grow:1;">${p}</span>
+          <button onclick="popProblemItem(${idx})" style="background:#ef4444; border:none; color:white; border-radius:3px; padding:2px 6px; cursor:pointer;">&times;</button>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function rebuildDropdownProblemOptions() {
+      const select = document.getElementById('problem');
+      const savedVal = select.value;
+      select.innerHTML = `<option value="">5. Select Problem / Issue</option>`;
+      
+      if (companySettingsObject.problems) {
+        companySettingsObject.problems.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p; opt.textContent = p;
+          select.appendChild(opt);
+        });
+      }
+      select.value = savedVal;
+    }
+
+    async function appendCustomProblemItem(btnElement) {
+      const inp = document.getElementById('newProblemInput');
+      const val = inp.value.trim();
+      if (val && !companySettingsObject.problems.includes(val)) {
+        companySettingsObject.problems.push(val);
+        inp.value = "";
+        buildProblemsConfigurationListElements();
+        rebuildDropdownProblemOptions();
+        try {
+          await PhoneRepairModule.saveSettings(companySettingsObject);
+          showToast('Added custom issue category', 'success');
+        } catch(err) {
+          showToast('Failed to save updated categories', 'error');
+        }
+      }
+    }
+
+    async function popProblemItem(index) {
+      companySettingsObject.problems.splice(index, 1);
+      buildProblemsConfigurationListElements();
+      rebuildDropdownProblemOptions();
+      try {
+        await PhoneRepairModule.saveSettings(companySettingsObject);
+        showToast('Removed issue category', 'info');
+      } catch(err) {
+        showToast('Failed to save categories update', 'error');
+      }
+    }
+
+    async function saveConfigSettingsForm(btnElement) {
+      companySettingsObject.name = document.getElementById('cfgName').value;
+      companySettingsObject.email = document.getElementById('cfgEmail').value;
+      companySettingsObject.phone = document.getElementById('cfgPhone').value;
+      companySettingsObject.technician = document.getElementById('cfgTech').value;
+      companySettingsObject.address = document.getElementById('cfgAddress').value;
+
+      const started = setButtonLoading(btnElement, true, ' Saving...');
+      if (!started) return;
+
+      try {
+        await PhoneRepairModule.saveSettings(companySettingsObject);
+        await pullConfigurationSettings();
+        closeSettingsModal();
+        showToast('Configuration parameters updated', 'success');
+        Swal.fire('Saved', 'Global structural properties updated across core view sheets.', 'success');
+      } catch(err) {
+        console.error("Save config error:", err);
+        showToast('Failed to save configuration settings', 'error');
+      } finally {
+        setButtonLoading(btnElement, false);
+      }
+    }
+
+    // Initialize application on DOM load
+    document.addEventListener('DOMContentLoaded', initializeSystemApplication);
+  </script>
+
+  <script>
+  /* =====================================================================
+     PHONE REPAIR BACK UP & RESTORE  (new page; independent module "phone")
+     - Same Google authorization as EKAMBANI POS/Finance (token comes from the POS page when embedded,
+       otherwise this page signs in with the same OAuth client).
+     - Own Drive folder (name saved once, then locked), own file "ekambani-phone-backup.json", tagged
+       ekambaniModule=phone. Never touches POS/Finance folders or files.
+     - Records are read/written in batches (500 per step) with progress; the backup file is built from
+       pieces (never one giant in-memory object); large files use resumable upload.
+     - Restore is a safe MERGE: verifies the file (app, counts, hash), adds only missing invoices, never
+       overwrites existing ones (different copies are reported and left untouched), verifies what it added,
+       and can simply be run again if interrupted.
+     - Real limits: browser storage/memory and Google Drive quota still apply; restore reads the file
+       as one text before importing it in batches.
+     ===================================================================== */
+  /* ═══════════════════════════════════════════════════════════════
+     EKAMBANI CHUNKED BACKUP ENGINE  (same code is embedded in the POS and in Phone Repair; no libraries)
+     Backup layout in the module's own Google Drive folder:
+       <prefix>-manifest-<id>.json   one per backup version (written LAST = the backup is only complete once it exists)
+       <prefix>-part-<store>-<sha>.json   parts of ≤5000 records / ~6 MB, named by their SHA-256
+     - Incremental: key ranges from the previous manifest are reused; a part whose SHA-256 is unchanged is not uploaded again.
+     - Resumable: uploaded parts are checkpointed; an interrupted backup continues without re-uploading them.
+     - Success is reported only after every part is verified and the manifest is uploaded and size-checked.
+     - Restore verifies every part exists, then downloads part by part, checks size + SHA-256, and MERGES records in
+       batches (adds missing records; never overwrites or deletes existing ones). Progress is checkpointed so it can resume.
+     - Older single-file backups (legacy) can still be restored.
+  ═══════════════════════════════════════════════════════════════ */
+  function EkBackupEngine(cfg) {
+    var PART_RECORDS = cfg.partRecords || 5000, PART_BYTES = cfg.partBytes || 6 * 1024 * 1024, KEEP = cfg.keepVersions || 3;
+    var PAGE = cfg.pageSize || 1000, BATCH = cfg.batchSize || 1000, P = cfg.prefix;
+    var tick = function() { return new Promise(function(r) { setTimeout(r, 0); }); };
+    var noop = function() {};
+    async function sha256(blob) {
+      var a = new Uint8Array(await crypto.subtle.digest('SHA-256', await blob.arrayBuffer())), s = '';
+      for (var i = 0; i < a.length; i++) s += (a[i] < 16 ? '0' : '') + a[i].toString(16);
+      return s;
+    }
+    function retryable(e) { return !(e && (e.needsAuth || (e.status >= 400 && e.status < 500 && e.status !== 429 && e.status !== 408))); }
+    async function retry(fn) {
+      var err;
+      for (var i = 0; i < 4; i++) {
+        try { return await fn(); }
+        catch (e) { err = e; if (!retryable(e)) throw e; await new Promise(function(r) { setTimeout(r, (cfg.retryMs == null ? 500 : cfg.retryMs) * Math.pow(2, i)); }); }
+      }
+      throw err;
+    }
+    function byNameDesc(a, b) { return a.name < b.name ? 1 : (a.name > b.name ? -1 : 0); }
+    async function readJSON(id) { var b = await retry(function() { return cfg.drive.download(id); }); return JSON.parse(await b.text()); }
+    async function manifests() { var l = await retry(function() { return cfg.drive.list(P + '-manifest-'); }); l.sort(byNameDesc); return l; }
+    function validateManifest(m) {
+      if (!m || typeof m !== 'object' || m.app !== cfg.appId || m.format !== 2 || !m.stores || typeof m.stores !== 'object') return 'not a valid backup manifest';
+      for (var n in m.stores) {
+        var ps = m.stores[n] && m.stores[n].parts;
+        if (!Array.isArray(ps)) return 'manifest is missing the parts of "' + n + '"';
+        for (var i = 0; i < ps.length; i++) { var p = ps[i]; if (!p || typeof p.fileId !== 'string' || typeof p.sha256 !== 'string' || typeof p.bytes !== 'number' || typeof p.count !== 'number' || typeof p.seq !== 'number') return 'manifest has an invalid part entry'; }
+      }
+      return '';
+    }
+    function flatParts(m) { var out = []; cfg.stores.forEach(function(s) { var st = m.stores[s.name]; if (st) st.parts.forEach(function(p) { out.push({ store: s.name, p: p }); }); }); return out; }
+  
+    async function latestManifest() { var ms = await manifests(); return ms.length ? { id: ms[0].id, name: ms[0].name } : null; }
+  
+    /* ───────────── BACKUP ───────────── */
+    async function backup(o) {
+      o = o || {}; var prog = o.progress || noop;
+      var backupId = new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 17) + '-' + Math.random().toString(36).slice(2, 7);
+      var ms = await manifests(), prev = null;
+      for (var mi = 0; mi < ms.length && mi < KEEP && !prev; mi++) { try { var pj = await readJSON(ms[mi].id); if (!validateManifest(pj)) prev = pj; } catch (e) {} }
+      var known = new Map(), prevBounds = {}, uploadedIds = new Set(), uploaded = 0, reused = 0;
+      if (prev) Object.keys(prev.stores).forEach(function(n) {
+        var ps = prev.stores[n].parts.slice().sort(function(a, b) { return a.seq - b.seq; });
+        ps.forEach(function(p) { known.set(n + '|' + p.sha256, { fileId: p.fileId, bytes: p.bytes, name: p.name }); });
+        prevBounds[n] = ps.map(function(p) { return p.upTo; }).filter(function(x) { return x !== null && x !== undefined; });
+      });
+      var ck = await cfg.ckpGet('Backup'), ckParts = (ck && Array.isArray(ck.parts)) ? ck.parts : [];
+      ckParts.forEach(function(p) { known.set(p.store + '|' + p.sha256, { fileId: p.fileId, bytes: p.bytes, name: p.name }); });
+      var totals = {}, grand = 0, done = 0, si;
+      for (si = 0; si < cfg.stores.length; si++) { var nm = cfg.stores[si].name; totals[nm] = await cfg.count(nm); grand += totals[nm]; }
+  
+      async function makePart(sdef, strs, after, upTo, seq) {
+        var blob = new Blob(['{"app":' + JSON.stringify(cfg.appId) + ',"format":2,"store":' + JSON.stringify(sdef.name) + ',"count":' + strs.length + ',"records":[', strs.join(','), ']}'], { type: 'application/json' });
+        var sha = await sha256(blob), key = sdef.name + '|' + sha, kn = known.get(key), fileId, name;
+        if (kn && !uploadedIds.has(kn.fileId)) {            // seen in an earlier backup/checkpoint: make sure it still exists in Drive
+          var mt = null; try { mt = await retry(function() { return cfg.drive.meta(kn.fileId); }); } catch (e) { mt = null; }
+          if (!mt || mt.trashed || Number(mt.size) !== blob.size) { known.delete(key); kn = null; }
+        }
+        if (kn) { fileId = kn.fileId; name = kn.name; reused++; }
+        else {
+          name = P + '-part-' + sdef.name + '-' + sha.slice(0, 16) + '.json';
+          var up;
+          try { up = await retry(function() { return cfg.drive.upload(name, blob); }); }
+          catch (e) { try { await cfg.ckpSet('Backup', { backupId: backupId, parts: ckParts }); } catch (e2) {} throw e; }   // keep progress so the next run resumes
+          if (!up || Number(up.size) !== blob.size) throw new Error('Upload verification failed for ' + name);
+          fileId = up.id; known.set(key, { fileId: fileId, bytes: blob.size, name: name }); uploadedIds.add(fileId); uploaded++;
+          ckParts.push({ store: sdef.name, sha256: sha, fileId: fileId, bytes: blob.size, name: name });
+          if (uploaded % 5 === 0) await cfg.ckpSet('Backup', { backupId: backupId, parts: ckParts });
+        }
+        return { seq: seq, fileId: fileId, name: name, count: strs.length, bytes: blob.size, sha256: sha, after: after, upTo: upTo };
+      }
+  
+      var mStores = {}, partCount = 0, recordCount = 0;
+      for (si = 0; si < cfg.stores.length; si++) {
+        var sdef = cfg.stores[si], bounds = (prevBounds[sdef.name] || []).filter(function(x, i, a) { return i === 0 || x > a[i - 1]; });
+        var ranges = [], lo = null;
+        bounds.forEach(function(b) { ranges.push({ after: lo, upTo: b }); lo = b; });
+        ranges.push({ after: lo, upTo: null });
+        var parts = [], seq = 0;
+        for (var ri = 0; ri < ranges.length; ri++) {
+          var rg = ranges[ri], cur = rg.after, chunkAfter = rg.after, buf = [], bytes = 0, lastPart = null;
+          for (;;) {
+            var page = await retry(function() { return cfg.readPage(sdef.name, cur, rg.upTo, PAGE); });
+            if (!page.length) break;
+            cur = page[page.length - 1][sdef.keyPath];
+            done += page.length;
+            for (var i = 0; i < page.length; i++) {
+              var rec = page[i];
+              if (sdef.filter && !sdef.filter(rec)) continue;
+              var str = JSON.stringify(rec); buf.push(str); bytes += str.length;
+              if (buf.length >= PART_RECORDS || bytes >= PART_BYTES) {
+                var kk = rec[sdef.keyPath];
+                lastPart = await makePart(sdef, buf, chunkAfter, kk, seq++); parts.push(lastPart);
+                chunkAfter = kk; buf = []; bytes = 0;
+              }
+            }
+            prog('Backing up ' + sdef.name, done, grand); await tick();
+          }
+          if (buf.length) { lastPart = await makePart(sdef, buf, chunkAfter, rg.upTo, seq++); parts.push(lastPart); }
+          else if (lastPart) lastPart.upTo = rg.upTo;
+        }
+        var cnt = parts.reduce(function(a, p) { return a + p.count; }, 0);
+        mStores[sdef.name] = { count: cnt, parts: parts }; partCount += parts.length; recordCount += cnt;
+      }
+      var manifest = { app: cfg.appId, format: 2, module: cfg.module, backupId: backupId, created: new Date().toISOString(),
+        dbVersion: cfg.dbVersion ? cfg.dbVersion() : 0, partCount: partCount, recordCount: recordCount, stores: mStores };
+      var mblob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+      var mname = P + '-manifest-' + backupId + '.json';
+      var mup = await retry(function() { return cfg.drive.upload(mname, mblob); });
+      if (!mup || Number(mup.size) !== mblob.size) throw new Error('The backup manifest could not be verified in Google Drive.');
+      await cfg.ckpSet('Backup', null);
+      try { await prune(mup.id); } catch (e) { /* cleaning up old versions is never fatal */ }
+      return { manifestId: mup.id, backupId: backupId, parts: partCount, records: recordCount, uploaded: uploaded, reused: reused };
+    }
+  
+    /* keep the newest KEEP versions; delete older manifests and parts nothing references (only if older than 24 h) */
+    async function prune(newId) {
+      var ms = await manifests(), keep = ms.slice(0, KEEP), keepIds = new Set(keep.map(function(m) { return m.id; })), refs = new Set();
+      for (var i = 0; i < keep.length; i++) { var m = await readJSON(keep[i].id); flatParts(m).forEach(function(x) { refs.add(x.p.fileId); }); }
+      for (var j = 0; j < ms.length; j++) if (!keepIds.has(ms[j].id)) await retry(function() { return cfg.drive.remove(ms[j].id); });
+      var files = await retry(function() { return cfg.drive.list(P + '-part-'); }), cutoff = Date.now() - 24 * 3600 * 1000;
+      for (var k = 0; k < files.length; k++) {
+        var f = files[k]; if (refs.has(f.id)) continue;
+        if (f.createdTime && Date.parse(f.createdTime) > cutoff) continue;
+        await retry(function() { return cfg.drive.remove(f.id); });
+      }
+    }
+  
+    /* ───────────── RESTORE (merge) ───────────── */
+    async function applyRecords(sdef, recs, tot) {
+      for (var b = 0; b < recs.length; b += BATCH) {
+        var slice = recs.slice(b, b + BATCH);
+        var r = await retry(function() { return cfg.writeBatch(sdef.name, slice); });
+        if (r.verified !== r.added) throw new Error('Verification failed: ' + (r.added - r.verified) + ' record(s) of "' + sdef.name + '" could not be confirmed after writing.');
+        tot.added += r.added; tot.dup += r.dup; tot.conf += r.conf; tot.handled += slice.length;
+        await tick();
+      }
+    }
+    async function restore(o) {
+      o = o || {}; var prog = o.progress || noop, ms = await manifests(), man = null, chosen = null, skipped = [];
+      for (var i = 0; i < ms.length && !man; i++) {
+        var m; try { m = await readJSON(ms[i].id); } catch (e) { skipped.push(ms[i].name + ' (unreadable)'); continue; }
+        var bad = validateManifest(m); if (bad) { skipped.push(ms[i].name + ' (' + bad + ')'); continue; }
+        var all = flatParts(m), ok = true;
+        for (var j = 0; j < all.length; j++) {
+          var mt = null; try { mt = await retry(function() { return cfg.drive.meta(all[j].p.fileId); }); } catch (e) { mt = null; }
+          if (!mt || mt.trashed || Number(mt.size) !== all[j].p.bytes) { ok = false; break; }
+          if (j % 25 === 0) { prog('Verifying backup parts', j + 1, all.length); await tick(); }
+        }
+        if (!ok) { skipped.push(ms[i].name + ' (a part is missing or damaged)'); continue; }
+        man = m; chosen = ms[i];
+      }
+      var tot = { added: 0, dup: 0, conf: 0, handled: 0 };
+      if (!man) {
+        var lg = (await retry(function() { return cfg.drive.list(cfg.legacyName); })).filter(function(f) { return f.name === cfg.legacyName; })[0];
+        if (!lg) return { none: true, skipped: skipped };
+        var lobj; try { lobj = JSON.parse(await (await retry(function() { return cfg.drive.download(lg.id); })).text()); } catch (e) { throw new Error('The older backup file is damaged.'); }
+        var lst = cfg.legacyToStores(lobj), ltotal = 0;
+        cfg.stores.forEach(function(s) { ltotal += (lst[s.name] || []).length; });
+        if (!(await o.confirm({ legacy: true, created: lobj.createdAt || lobj.created, records: ltotal, parts: 1 }))) return { cancelled: true };
+        var ldone = 0;
+        for (var si = 0; si < cfg.stores.length; si++) {
+          var ls = cfg.stores[si], recs = lst[ls.name] || [];
+          for (var q = 0; q < recs.length; q += PART_RECORDS) { await applyRecords(ls, recs.slice(q, q + PART_RECORDS), tot); ldone += Math.min(PART_RECORDS, recs.length - q); prog('Restoring', ldone, ltotal); }
+        }
+        if (tot.handled !== ltotal) throw new Error('Not every record was processed (' + tot.handled + ' of ' + ltotal + ').');
+        return { ok: true, legacy: true, totals: tot, records: ltotal };
+      }
+      if (!(await o.confirm({ legacy: false, created: man.created, records: man.recordCount, parts: man.partCount, skipped: skipped }))) return { cancelled: true };
+      var ck = await cfg.ckpGet('Restore'), doneSet = new Set(ck && ck.backupId === man.backupId && Array.isArray(ck.done) ? ck.done : []);
+      var all2 = flatParts(man), processed = 0, resumed = 0;
+      for (var pi = 0; pi < all2.length; pi++) {
+        var sdef = cfg.stores.filter(function(s) { return s.name === all2[pi].store; })[0], p = all2[pi].p, key = sdef.name + ':' + p.seq;
+        if (doneSet.has(key)) { processed += p.count; resumed += p.count; continue; }
+        var blob = await retry(function() { return cfg.drive.download(p.fileId); });
+        if (blob.size !== p.bytes) throw new Error('Part ' + p.name + ' has the wrong size.');
+        if ((await sha256(blob)) !== p.sha256) throw new Error('Part ' + p.name + ' failed the SHA-256 integrity check. Nothing from it was restored.');
+        var obj = JSON.parse(await blob.text()); blob = null;
+        if (!obj || obj.store !== sdef.name || !Array.isArray(obj.records) || obj.records.length !== p.count) throw new Error('Part ' + p.name + ' does not match the manifest.');
+        for (var ri = 0; ri < obj.records.length; ri++) { var rr = obj.records[ri]; if (!rr || typeof rr !== 'object' || rr[sdef.keyPath] === undefined || rr[sdef.keyPath] === null || rr[sdef.keyPath] === '') throw new Error('Part ' + p.name + ' contains a damaged record.'); }
+        await applyRecords(sdef, obj.records, tot);
+        processed += p.count; doneSet.add(key);
+        if (doneSet.size % 10 === 0) await cfg.ckpSet('Restore', { backupId: man.backupId, done: Array.from(doneSet) });
+        prog('Restoring', processed, man.recordCount); await tick();
+      }
+      if (processed !== man.recordCount || tot.handled + resumed !== man.recordCount) throw new Error('Record count check failed: ' + (tot.handled + resumed) + ' of ' + man.recordCount + ' records were accounted for.');
+      await cfg.ckpSet('Restore', null);
+      return { ok: true, manifestId: chosen.id, backupId: man.backupId, created: man.created, totals: tot, records: man.recordCount, resumed: resumed };
+    }
+    return { backup: backup, restore: restore, latestManifest: latestManifest };
+  }
+  
+  /* Generic IndexedDB adapter used by the engine: ordered key-range pages + safe merge-insert with verification. */
+  function EkIdbAdapter(getDb) {
+    function rq(r) { return new Promise(function(res, rej) { r.onsuccess = function() { res(r.result); }; r.onerror = function() { rej(r.error); }; }); }
+    function done(t) { return new Promise(function(res, rej) { t.oncomplete = function() { res(); }; t.onerror = function() { rej(t.error); }; t.onabort = function() { rej(t.error || new Error('Transaction aborted')); }; }); }
+    return {
+      count: async function(store) { var d = await getDb(); return rq(d.transaction(store, 'readonly').objectStore(store).count()); },
+      readPage: async function(store, after, upTo, limit) {
+        var d = await getDb(), os = d.transaction(store, 'readonly').objectStore(store), range;
+        if (after !== null && after !== undefined && upTo !== null && upTo !== undefined) range = IDBKeyRange.bound(after, upTo, true, false);
+        else if (after !== null && after !== undefined) range = IDBKeyRange.lowerBound(after, true);
+        else if (upTo !== null && upTo !== undefined) range = IDBKeyRange.upperBound(upTo, false);
+        else range = null;
+        return rq(os.getAll(range, limit));
+      },
+      /* adds records that are missing; identical = duplicate; different = conflict (local copy kept). Returns verified count. */
+      writeBatch: async function(store, recs) {
+        var d = await getDb();
+        var res = await new Promise(function(resolve, reject) {
+          var t = d.transaction(store, 'readwrite'), os = t.objectStore(store), keyP = os.keyPath, r0 = { added: 0, dup: 0, conf: 0, verified: 0, keys: [] };
+          if (!recs.length) { resolve(r0); return; }
+          t.oncomplete = function() { resolve(r0); };
+          t.onerror = function() { reject(t.error); };
+          t.onabort = function() { reject(t.error || new Error('Transaction aborted')); };
+          recs.forEach(function(r) {
+            os.get(r[keyP]).onsuccess = function(e) {
+              var ex = e.target.result;
+              if (ex === undefined) { os.add(r); r0.keys.push(r[keyP]); r0.added++; }
+              else if (JSON.stringify(ex) === JSON.stringify(r)) r0.dup++; else r0.conf++;
+            };
+          });
+        });
+        if (res.keys.length) {
+          var os2 = (await getDb()).transaction(store, 'readonly').objectStore(store);
+          var keys = await Promise.all(res.keys.map(function(k) { return rq(os2.getKey(k)); }));
+          res.verified = keys.filter(function(k) { return k !== undefined; }).length;
+        }
+        delete res.keys;
+        return res;
+      }
+    };
+  }
+  
+  const PhoneBackup = (function() {
+    var DB_NAME = 'PhoneRepairSystemDB', MODULE = 'phone', FILE = 'ekambani-phone-backup.json', APP = 'PhoneRepairSystem', BATCH = 500;
+    var CFG = { CLIENT_ID: '91062929087-i8mhcncd17gg6fbfrfkuqidepga9j2eo.apps.googleusercontent.com', SCOPES: 'https://www.googleapis.com/auth/drive.file',
+      API: 'https://www.googleapis.com/drive/v3', UP: 'https://www.googleapis.com/upload/drive/v3', GIS: 'https://accounts.google.com/gsi/client' };
+    var st = { id: 'drive', connected: false, email: '', folderName: '', folderId: '', fileId: '', syncedFileId: '', auto: false, lastBackup: null };
+    var tok = { v: '', exp: 0 }, gisP = null, busy = false, rev = 0, doneRev = 0, timer = null, status = null, prog = null, ready = false;
+    var $ = function(id) { return document.getElementById(id); };
+    var tick = function() { return new Promise(function(r) { setTimeout(r, 0); }); };
+
+    /* ---- own connection to the Phone Repair database (same database, no schema change) ---- */
+    var _db = null;
+    function openDb() {
+      if (_db) return Promise.resolve(_db);
+      return new Promise(function(res, rej) {
+        var r = indexedDB.open(DB_NAME);
+        r.onsuccess = function() { _db = r.result; _db.onversionchange = function() { try { _db.close(); } catch (e) {} _db = null; }; res(_db); };
+        r.onerror = function() { rej(r.error); };
+      });
+    }
+    function req(r) { return new Promise(function(res, rej) { r.onsuccess = function() { res(r.result); }; r.onerror = function() { rej(r.error); }; }); }
+    function txDone(t) { return new Promise(function(res, rej) { t.oncomplete = function() { res(); }; t.onerror = function() { rej(t.error); }; t.onabort = function() { rej(t.error || new Error('Transaction aborted')); }; }); }
+    async function dget(store, key) { var d = await openDb(); return req(d.transaction(store, 'readonly').objectStore(store).get(key)); }
+    async function dput(store, val) { var d = await openDb(); var t = d.transaction(store, 'readwrite'); t.objectStore(store).put(val); return txDone(t); }
+    async function dcount() { var d = await openDb(); return req(d.transaction('invoices', 'readonly').objectStore('invoices').count()); }
+    async function dpage(lastKey) {
+      var d = await openDb(), os = d.transaction('invoices', 'readonly').objectStore('invoices');
+      return req(lastKey == null ? os.getAll(null, BATCH) : os.getAll(IDBKeyRange.lowerBound(lastKey, true), BATCH));
+    }
+    function fnv(h, str) { for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h >>> 0; }
+    function saveState() { return dput('settings', st); }
+
+    /* ---- Google authorization ---- */
+    function hostDrive() { try { if (window.parent && window.parent !== window && window.parent.EkambaniDrive) return window.parent.EkambaniDrive; } catch (e) {} return null; }
+    function configured() { return !/YOUR_|REPLACE|XXXX/i.test(CFG.CLIENT_ID || ''); }
+    function envOk() { return location.protocol === 'https:' || (location.protocol === 'http:' && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)); }
+    function avail() { if (!configured() || !envOk()) return false; var h = hostDrive(); if (h && typeof h.available === 'function' && !h.available()) return false; return true; }
+    function authErr(m) { var e = new Error(m); e.needsAuth = true; return e; }
+    function tokOk() { return !!tok.v && Date.now() < tok.exp - 60000; }
+    function loadGIS() {
+      if (window.google && google.accounts && google.accounts.oauth2) return Promise.resolve();
+      if (gisP) return gisP;
+      gisP = new Promise(function(res, rej) {
+        var sc = document.createElement('script'); sc.src = CFG.GIS; sc.async = true; sc.onload = function() { res(); };
+        sc.onerror = function() { gisP = null; rej(new Error('Could not load Google sign-in. Check your internet connection.')); };
+        document.head.appendChild(sc);
+      });
+      return gisP;
+    }
+    function ownToken(prompt) {
+      return loadGIS().then(function() {
+        return new Promise(function(res, rej) {
+          var timerX = setTimeout(function() { rej(authErr('Sign-in timed out.')); }, 60000);
+          var c = google.accounts.oauth2.initTokenClient({ client_id: CFG.CLIENT_ID, scope: CFG.SCOPES, hint: st.email || undefined,
+            callback: function(r) { clearTimeout(timerX); if (!r || r.error || !r.access_token) { rej(authErr((r && (r.error_description || r.error)) || 'Sign-in failed.')); return; }
+              tok = { v: r.access_token, exp: Date.now() + (Number(r.expires_in) || 3600) * 1000 }; res(tok.v); },
+            error_callback: function(e) { clearTimeout(timerX); rej(authErr('Sign-in cancelled' + (e && e.type ? ' (' + e.type + ')' : '') + '.')); } });
+          c.requestAccessToken({ prompt: prompt });
+        });
+      });
+    }
+    async function token(interactive) {
+      if (tokOk()) return tok.v;
+      if (!navigator.onLine) throw new Error('No internet connection.');
+      var h = hostDrive();
+      if (h && typeof h.getToken === 'function') {
+        try { var r = await h.getToken(!!interactive); tok = { v: r.access_token, exp: r.expires_at }; return tok.v; }
+        catch (e) { if (!e.needsAuth) e.needsAuth = true; throw e; }
+      }
+      return ownToken(interactive && !st.connected ? 'select_account' : '');
+    }
+    async function dfetch(url, o) {
+      o = o || {}; o.headers = Object.assign({}, o.headers, { Authorization: 'Bearer ' + tok.v });
+      var r; try { r = await fetch(url, o); } catch (e) { var n = new Error('Network problem. Check your internet connection.'); n.network = true; throw n; }
+      if (!r.ok) {
+        var e2 = new Error('Google Drive error ' + r.status + '.'); e2.status = r.status;
+        if (r.status === 401) { tok = { v: '', exp: 0 }; var h = hostDrive(); if (h && typeof h.invalidate === 'function') h.invalidate(); e2.needsAuth = true; e2.message = 'Google session expired. Reconnect Google Drive.'; }
+        else if (r.status === 403) e2.message = 'Google Drive refused the request (permission or storage quota). Try again later.';
+        else if (r.status === 404) e2.message = 'Item not found in Google Drive.';
+        else if (r.status === 429) e2.message = 'Google Drive rate limit reached. It will be retried later.';
+        else if (r.status >= 500) e2.message = 'Google Drive is temporarily unavailable. It will be retried later.';
+        throw e2;
+      }
+      return r;
+    }
+    function gq(x) { return String(x).replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
+    var TAGQ = "appProperties has { key='ekambaniModule' and value='" + MODULE + "' }";
+    async function driveEmail() { try { var r = await dfetch(CFG.API + '/about?fields=user(emailAddress)'); var j = await r.json(); return (j && j.user && j.user.emailAddress) || ''; } catch (e) { return ''; } }
+    async function findFolder(name) {
+      var q = "mimeType='application/vnd.google-apps.folder' and name='" + gq(name) + "' and " + TAGQ + " and trashed=false";
+      var r = await dfetch(CFG.API + '/files?fields=files(id,name)&orderBy=createdTime&pageSize=5&q=' + encodeURIComponent(q));
+      return ((await r.json()).files || [])[0] || null;
+    }
+    async function createFolder(name) {
+      var r = await dfetch(CFG.API + '/files?fields=id,name', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name, mimeType: 'application/vnd.google-apps.folder', appProperties: { ekambaniModule: MODULE } }) });
+      return r.json();
+    }
+    /* Uses the SAVED folder id; a folder is only found/created the very first time (never duplicated). */
+    async function ensureFolder(allowCreate) {
+      if (st.folderId) {
+        try { var r = await dfetch(CFG.API + '/files/' + encodeURIComponent(st.folderId) + '?fields=id,trashed'); var j = await r.json(); if (j && !j.trashed) return st.folderId; }
+        catch (e) { if (e.status !== 404 && e.status !== 403) throw e; }
+        throw new Error('Your Phone Repair backup folder "' + st.folderName + '" is not available in Google Drive (it may be in the Bin, or this Google account cannot access it). Nothing was changed.');
+      }
+      var f = await findFolder(st.folderName);
+      if (!f) { if (!allowCreate) return ''; f = await createFolder(st.folderName); }
+      st.folderId = f.id; st.fileId = ''; st.syncedFileId = ''; await saveState();
+      return f.id;
+    }
+    async function findFile(fid) {
+      var q = "'" + gq(fid) + "' in parents and name='" + gq(FILE) + "' and trashed=false";
+      var r = await dfetch(CFG.API + '/files?fields=files(id,modifiedTime)&orderBy=modifiedTime desc&pageSize=1&q=' + encodeURIComponent(q));
+      var f = ((await r.json()).files || [])[0]; return f ? f.id : '';
+    }
+    var idb = EkIdbAdapter(openDb);
+    var driveAd = {
+      list: async function(prefix) {
+        var out = [], tk = '';
+        do {
+          var q = "'" + gq(st.folderId) + "' in parents and trashed=false";
+          var r = await dfetch(CFG.API + '/files?fields=nextPageToken,files(id,name,size,createdTime)&pageSize=1000&q=' + encodeURIComponent(q) + (tk ? '&pageToken=' + encodeURIComponent(tk) : ''));
+          var j = await r.json();
+          (j.files || []).forEach(function(f) { if (String(f.name).indexOf(prefix) === 0) out.push({ id: f.id, name: f.name, size: Number(f.size || 0), createdTime: f.createdTime }); });
+          tk = j.nextPageToken || '';
+        } while (tk);
+        return out;
+      },
+      upload: async function(name, blob) {
+        var b = 'pbk' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), meta = { name: name, mimeType: 'application/json', parents: [st.folderId] };
+        var body = new Blob(['--' + b + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(meta) + '\r\n--' + b + '\r\nContent-Type: application/json\r\n\r\n', blob, '\r\n--' + b + '--']);
+        var r = await dfetch(CFG.UP + '/files?uploadType=multipart&fields=id,size', { method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + b }, body: body });
+        var j = await r.json(); return { id: j.id, size: Number(j.size) };
+      },
+      download: async function(id) { return (await dfetch(CFG.API + '/files/' + encodeURIComponent(id) + '?alt=media')).blob(); },
+      meta: async function(id) { return (await dfetch(CFG.API + '/files/' + encodeURIComponent(id) + '?fields=id,size,trashed')).json(); },
+      remove: async function(id) { await dfetch(CFG.API + '/files/' + encodeURIComponent(id), { method: 'DELETE' }); }
+    };
+    var engine = EkBackupEngine({
+      prefix: 'ekambani-phone', appId: APP, module: MODULE, legacyName: FILE,
+      stores: [{ name: 'invoices', keyPath: 'invoiceNo' }, { name: 'settings', keyPath: 'id', filter: function(r) { return r && r.id === 'companySettings'; } }],
+      count: idb.count, readPage: idb.readPage, writeBatch: idb.writeBatch, drive: driveAd,
+      ckpGet: async function(k) { return st['ck' + k] || null; },
+      ckpSet: async function(k, v) { st['ck' + k] = v; await saveState(); },
+      legacyToStores: function(obj) {
+        if (!obj || obj.app !== APP || !Array.isArray(obj.invoices)) throw new Error('This is not a Phone Repair backup file.');
+        return { invoices: obj.invoices, settings: obj.settings ? [Object.assign({}, obj.settings, { id: 'companySettings' })] : [] };
+      }
+    });
+
+    /* ---- progress / status UI ---- */
+    function setProg(label, a, b) {
+      prog = b ? { label: label, pct: Math.min(100, Math.round(a / b * 100)), a: a, b: b } : null;
+      var p = $('bkProg'), bar = $('bkProgBar'); if (!p) return;
+      p.style.display = prog ? 'block' : 'none'; bar.style.width = prog ? prog.pct + '%' : '0';
+      if (prog) { status = { text: label + '… ' + a.toLocaleString() + ' of ' + b.toLocaleString() + ' (' + prog.pct + '%)', kind: '' }; renderStatus(); }
+    }
+    function setStatus(text, kind) { status = text ? { text: text, kind: kind || '' } : null; if (!text) setProg('', 0, 0); renderStatus(); }
+    function renderStatus() {
+      var box = $('bkStatus'); if (!box) return;
+      var t = '', k = '';
+      if (status) { t = status.text; k = status.kind; } else t = 'Ready.';
+      box.textContent = t; box.className = 'bk-status' + (k ? ' ' + k : '');
+    }
+    function render() {
+      if (!$('bkAutoState')) return;
+      var on = !!(st.auto && st.connected && st.folderName);
+      $('bkAutoSwitch').classList.toggle('on', on); $('bkAutoSwitch').setAttribute('aria-checked', on ? 'true' : 'false');
+      $('bkAutoState').textContent = 'Automatic Backup is ' + (on ? 'ON' : 'OFF');
+      $('bkAutoHelp').textContent = on ? 'Backs up shortly after records change, whenever you are online and Google Drive is connected.' : 'OFF: backups happen only when you tap Manual Backup.';
+      var fi = $('bkFolderName'), fb = $('bkFolderSave');
+      if (st.folderName) { fi.value = st.folderName; fi.disabled = true; fb.disabled = true; fb.textContent = 'Locked'; $('bkFolderNote').textContent = 'The folder name is saved and locked.'; }
+      else { fi.disabled = false; fb.disabled = false; fb.textContent = 'Save Folder Name'; $('bkFolderNote').textContent = 'Choose carefully: once saved, the folder name cannot be changed.'; }
+      var dl = $('bkDriveLine'), cb = $('bkConnectBtn'), xb = $('bkDisconnectBtn');
+      if (!avail()) { dl.textContent = 'Google Drive is not available here (it needs a secure https:// or localhost address).'; cb.style.display = 'none'; xb.style.display = 'none'; }
+      else if (st.connected) { dl.textContent = 'Connected' + (st.email ? ' as ' + st.email : '') + '. Phone Repair backups go to your own folder' + (st.folderName ? ' "' + st.folderName + '"' : '') + ', separate from POS and Finance.'; cb.style.display = 'none'; xb.style.display = ''; }
+      else { dl.textContent = 'Not connected. It uses the same Google access as EKAMBANI POS.'; cb.style.display = ''; xb.style.display = 'none'; }
+      var lb = st.lastBackup, el = $('bkLast');
+      if (!lb) el.textContent = 'Last backup: none yet.';
+      else if (lb.ok) el.textContent = 'Last backup (' + lb.mode + '): ' + new Date(lb.time).toLocaleString() + ' — ' + lb.count.toLocaleString() + ' record(s). ' + lb.where;
+      else el.textContent = 'Last backup attempt (' + lb.mode + ') failed: ' + new Date(lb.time).toLocaleString() + ' — ' + lb.error;
+      ['bkManualBtn', 'bkRestoreBtn'].forEach(function(id) { $(id).disabled = busy; });
+      renderStatus();
+    }
+
+    /* ---- actions ---- */
+    function lock(fn) { return (navigator.locks && navigator.locks.request) ? navigator.locks.request('ekambani-phone-backup', fn) : fn(); }
+    async function doConnect() { await token(true); var em = await driveEmail(); st.connected = true; if (em) st.email = em; await saveState(); }
+    async function connect() {
+      if (!avail()) { showToast('Google Drive is not available here', 'warning'); return; }
+      $('bkConnectBtn').disabled = true;
+      try { await doConnect(); showToast('Google Drive connected', 'success'); setStatus(null); }
+      catch (e) { setStatus('Could not connect Google Drive: ' + (e && e.message || e), 'err'); }
+      finally { $('bkConnectBtn').disabled = false; render(); }
+    }
+    async function disconnect() {
+      var ok = await Swal.fire({ title: 'Disconnect Google Drive?', text: 'Automatic backup will turn OFF. Your folder name and all records are kept.', icon: 'warning', showCancelButton: true, confirmButtonColor: '#4a148c' });
+      if (!ok.isConfirmed) return;
+      clearTimeout(timer); tok = { v: '', exp: 0 };
+      st.connected = false; st.auto = false; st.email = '';
+      try { await saveState(); showToast('Disconnected', 'info'); } catch (e) { showToast('Could not save setting', 'error'); }
+      render();
+    }
+    async function saveFolder() {
+      if (st.folderName) return;
+      var v = ($('bkFolderName').value || '').trim();
+      if (!v) { showToast('Enter a folder name', 'warning'); return; }
+      if (v.length > 60 || /[\\\/:*?"<>|\x00-\x1f]/.test(v) || /^\.+$/.test(v) || /[. ]$/.test(v)) { showToast('Folder name has invalid characters', 'warning'); return; }
+      var ok = await Swal.fire({ title: 'Save this folder name?', text: '"' + v + '" becomes the permanent Phone Repair backup folder. It cannot be changed later.', icon: 'question', showCancelButton: true, confirmButtonColor: '#4a148c' });
+      if (!ok.isConfirmed) return;
+      try {
+        var cur = await dget('settings', 'drive');
+        if (cur && cur.folderName) { st = Object.assign(st, cur); showToast('A folder name is already saved', 'info'); render(); return; }
+        st.folderName = v; await saveState();
+        var chk = await dget('settings', 'drive'); if (!chk || chk.folderName !== v) throw new Error('Could not verify the saved name');
+        showToast('Folder name saved', 'success');
+      } catch (e) { st.folderName = ''; showToast('Could not save folder name', 'error'); }
+      render();
+    }
+    async function setAuto(on) { var prev = st.auto; st.auto = !!on; if (!on) clearTimeout(timer); try { await saveState(); } catch (e) { st.auto = prev; throw e; } }
+    async function toggleAuto() {
+      var sw = $('bkAutoSwitch'); if (sw.classList.contains('busy')) return;
+      var want = !(st.auto && st.connected && st.folderName);
+      if (want) {
+        if (!avail()) { showToast('Google Drive is not available here', 'warning'); return; }
+        if (!st.folderName) { showToast('Save a folder name first', 'warning'); return; }
+        if (!st.connected) { try { await doConnect(); } catch (e) { setStatus('Could not connect Google Drive: ' + (e && e.message || e), 'err'); render(); return; } }
+      }
+      sw.classList.add('busy');
+      try { await setAuto(want); showToast('Automatic backup is ' + (want ? 'ON' : 'OFF'), want ? 'success' : 'info'); if (want) { rev++; schedule(1500); } }
+      catch (e) { showToast('Could not save the setting', 'error'); }
+      finally { sw.classList.remove('busy'); render(); }
+    }
+
+    /* One backup run (chunked, incremental, verified). Returns 'ok' | 'skipped' | 'cancelled'. */
+    async function runBackup(interactive, mode) {
+      await token(interactive);
+      if (!st.connected) { var em = await driveEmail(); st.connected = true; if (em) st.email = em; await saveState(); }
+      await ensureFolder(true);
+      var latest = await engine.latestManifest();
+      if (latest && st.syncedManifestId !== latest.id) {
+        if (!interactive) return 'skipped';
+        var ok = await Swal.fire({ title: 'Add a new backup version?', text: 'The folder already has a Phone Repair backup that this device has not restored. If this is a new device, use Restore first. Continue with this device\'s records? (Older versions are kept.)', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33' });
+        if (!ok.isConfirmed) return 'cancelled';
+      }
+      var startRev = rev;
+      var res = await engine.backup({ progress: setProg });
+      st.syncedManifestId = res.manifestId;
+      st.lastBackup = { time: Date.now(), mode: mode, ok: true, count: res.records, where: 'Saved to Google Drive folder "' + st.folderName + '" (' + res.parts + ' part(s): ' + res.uploaded + ' uploaded, ' + res.reused + ' unchanged).' };
+      await saveState();
+      if (startRev === rev) doneRev = rev;
+      return 'ok';
+    }
+    async function manual() {
+      if (busy) return;
+      if (!st.folderName) { setStatus('Save a folder name first.', 'err'); return; }
+      if (!avail()) { setStatus('Google Drive is not available here (it needs https:// or localhost).', 'err'); return; }
+      busy = true; render(); setStatus('Backing up…', '');
+      try {
+        var r = await lock(function() { return runBackup(true, 'manual'); });
+        if (r === 'ok') { setProg('', 0, 0); setStatus('Backup successful.\n' + st.lastBackup.count.toLocaleString() + ' record(s). ' + st.lastBackup.where, 'ok'); showToast('Backup successful', 'success'); }
+        else setStatus('Backup cancelled. Nothing was changed.', 'warn');
+      } catch (e) {
+        setProg('', 0, 0);
+        st.lastBackup = { time: Date.now(), mode: 'manual', ok: false, error: String(e && e.message || e) }; try { await saveState(); } catch (x) {}
+        setStatus('Backup failed: ' + (e && e.message || e) + '\nYour local records are safe.', 'err'); showToast('Backup failed', 'error');
+      } finally { busy = false; render(); }
+    }
+    async function auto() {
+      if (busy || !(st.auto && st.connected && st.folderName) || rev === doneRev || !navigator.onLine || !avail()) return;
+      busy = true; render();
+      try {
+        var r = await lock(function() { return runBackup(false, 'auto'); });
+        if (r === 'ok') { setProg('', 0, 0); status = null; }
+        else if (r === 'skipped') setStatus('A Phone Repair backup already exists in the Drive folder. Use Restore, or run one Manual Backup, to sync this device before automatic backups continue.', 'warn');
+      } catch (e) {
+        setProg('', 0, 0);
+        if (e && e.needsAuth) setStatus('Automatic backup is waiting: Google access needs to be renewed. Tap Connect Google Drive or Manual Backup.', 'warn');
+        else { st.lastBackup = { time: Date.now(), mode: 'auto', ok: false, error: String(e && e.message || e) }; try { await saveState(); } catch (x) {} }
+      } finally {
+        busy = false; render();
+        if (rev !== doneRev && st.auto && st.connected && !(status && status.kind === 'warn')) schedule(5000);   // changes arrived during the upload
+      }
+    }
+    function schedule(ms) { clearTimeout(timer); if (st.auto && st.connected && st.folderName) timer = setTimeout(auto, ms == null ? 8000 : ms); }
+    function markDirty() { rev++; if (ready) schedule(); }
+
+    /* ---- restore (merge, batched, SHA-256 verified, resumable) ---- */
+    async function restore() {
+      if (busy) return;
+      if (!st.folderName) { setStatus('Save the folder name first (use the same name as your Phone Repair backup folder).', 'err'); return; }
+      if (!avail()) { setStatus('Google Drive is not available here (it needs https:// or localhost).', 'err'); return; }
+      busy = true; render(); setStatus('Checking Google Drive…', '');
+      try {
+        await token(true);
+        if (!st.connected) { var em = await driveEmail(); st.connected = true; if (em) st.email = em; await saveState(); }
+        var fid = await ensureFolder(false);
+        if (!fid) { setStatus('No Phone Repair backup folder named "' + st.folderName + '" was found in this Google Drive.', 'warn'); return; }
+        var res = await engine.restore({
+          progress: setProg,
+          confirm: async function(info) {
+            var ok = await Swal.fire({ title: 'Restore this backup?', text: 'Backup from ' + (info.created ? new Date(info.created).toLocaleString() : 'unknown date') + ': ' + Number(info.records || 0).toLocaleString() + ' records in ' + info.parts + ' part(s). Records missing on this device are added. Existing records are never overwritten or deleted.' + (info.skipped && info.skipped.length ? ' (A newer backup version was skipped because it was incomplete.)' : '') + (info.legacy ? ' (Older single-file backup.)' : ''), icon: 'question', showCancelButton: true, confirmButtonColor: '#4a148c' });
+            return ok.isConfirmed;
+          }
+        });
+        setProg('', 0, 0);
+        if (res.none) { setStatus(res.skipped && res.skipped.length ? 'Backups were found but none is complete, so nothing was restored.' : 'No Phone Repair backup was found in the Google Drive folder "' + st.folderName + '".', 'warn'); return; }
+        if (res.cancelled) { setStatus('Restore cancelled. No changes were made.', 'warn'); return; }
+        if (res.manifestId) { st.syncedManifestId = res.manifestId; await saveState(); }
+        var t = res.totals;
+        setStatus('Restore successful.\nChecked ' + res.records.toLocaleString() + ' record(s): added and verified ' + t.added.toLocaleString() + ', already present ' + t.dup.toLocaleString() + (t.conf ? ', left ' + t.conf + ' differing record(s) unchanged' : '') + (res.resumed ? '\nContinued an interrupted restore (' + res.resumed.toLocaleString() + ' record(s) were already done).' : '') + '.', 'ok');
+        showToast('Restore successful', 'success');
+        try { if (typeof syncSystemStatePipeline === 'function') await syncSystemStatePipeline(); } catch (e) {}
+      } catch (e) {
+        setProg('', 0, 0);
+        setStatus('Restore stopped: ' + (e && e.message || e) + '\nRecords already restored are kept. Run Restore again to continue; nothing is duplicated.', 'err');
+      } finally { busy = false; render(); }
+    }
+
+    async function init() {
+      try { var cur = await dget('settings', 'drive'); if (cur) st = Object.assign(st, cur, { id: 'drive' }); } catch (e) {}
+      ready = true;
+      window.addEventListener('online', function() { if (rev !== doneRev) schedule(3000); });
+      render();
+    }
+    return { init: init, render: render, connect: connect, disconnect: disconnect, saveFolder: saveFolder, toggleAuto: toggleAuto, manual: manual, restore: restore, markDirty: markDirty };
+  })();
+
+  function openBackupPage() { document.getElementById('backupModal').style.display = 'block'; PhoneBackup.render(); }
+  function closeBackupPage() { document.getElementById('backupModal').style.display = 'none'; }
+  function bkConnect() { PhoneBackup.connect(); }
+  function bkDisconnect() { PhoneBackup.disconnect(); }
+  function bkSaveFolder() { PhoneBackup.saveFolder(); }
+  function bkToggleAuto() { PhoneBackup.toggleAuto(); }
+  function bkManual() { PhoneBackup.manual(); }
+  function bkRestore() { PhoneBackup.restore(); }
+
+  /* Existing save/delete/settings functions keep working unchanged; they only tell the backup module that data changed. */
+  (function() {
+    ['saveInvoice', 'deleteInvoice', 'saveSettings'].forEach(function(fn) {
+      var orig = PhoneRepairModule[fn]; if (typeof orig !== 'function') return;
+      PhoneRepairModule[fn] = function() { var p = orig.apply(this, arguments); if (p && p.then) p.then(function() { PhoneBackup.markDirty(); }, function() {}); return p; };
+    });
+  })();
+  /* Back chevron support: the POS page asks this page to step back inside Phone Repair first (close open pages). */
+  window.ekBack = function() {
+    var ids = ['backupModal', 'historyModal', 'settingsModal'];
+    for (var i = 0; i < ids.length; i++) { var el = document.getElementById(ids[i]); if (el && el.style.display === 'block') { el.style.display = 'none'; return true; } }
+    return false;
+  };
+  document.addEventListener('DOMContentLoaded', function() { PhoneBackup.init(); });
+  </script>
+</body>
+</html>
